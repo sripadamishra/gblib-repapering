@@ -10,23 +10,22 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.gblib.core.repapering.model.User;
-import com.gblib.core.repapering.services.UserService;
+import com.gblib.core.repapering.model.CounterParty;
+import com.gblib.core.repapering.services.CounterPartyService;
 
 /**
  * @author SRIPADA MISHRA
  *
  */
 @RestController
-public class AuthController {
+public class CounterPartyController {
 
 	@Autowired
-	UserService userService;
+	CounterPartyService counterPartyService;
 	
+	@RequestMapping(value = "/customer/{customerId}", method = RequestMethod.GET)
+	public @ResponseBody CounterParty getCustomerDetails(@PathVariable int customerId) {
 		
-	@RequestMapping(value = "/user/{loginid}", method = RequestMethod.GET)
-	public @ResponseBody User getUserDetails(@PathVariable String loginid) {
-		System.out.println(loginid);
-		return userService.findByLoginId(loginid);
+		return counterPartyService.findByCustomerId(customerId);
 	}
 }
