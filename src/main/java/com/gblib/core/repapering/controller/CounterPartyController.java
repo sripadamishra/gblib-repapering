@@ -23,7 +23,7 @@ public class CounterPartyController {
 	@Autowired
 	CounterPartyService counterPartyService;
 	
-	@RequestMapping(value = "/customer/{customerId}", method = RequestMethod.GET)
+	@RequestMapping(value = "find/customer/{customerId}", method = RequestMethod.GET)
 	public @ResponseBody CounterParty getCustomerDetails(@PathVariable int customerId) {
 		
 		return counterPartyService.findByCustomerId(customerId);

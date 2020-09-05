@@ -13,9 +13,10 @@ public interface IContractRepository<U> extends CrudRepository<Contract,Long> {
 
 	Contract findByContractId(String contractId);
 	
+	Contract findById(int id);
+	
 	@Modifying
 	@Query("update Contract c set c.currStatusId = :currStatusId where c.id = :id")
 	Integer setNewCurrStatusIdForContract(@Param("currStatusId") int currStatusId, 
 			@Param("id") int id);
-	
 }

@@ -21,10 +21,13 @@ public class Contract {
 	private int id;
 	
 	@Column(name = "contractId")
-	private String contractId;
+	private int contractId;
 	
 	@Column(name = "parentContractId")
-	private String parentContractId;
+	private int parentContractId;
+	
+	@Column(name = "customContractId")
+	private String customContractId;
 	
 	@Column(name = "documentFileName")
 	private String documentFileName;
@@ -85,22 +88,30 @@ public class Contract {
 		this.id = id;
 	}
 
-	public String getContractId() {
+	public int getContractId() {
 		return contractId;
 	}
 
-	public void setContractId(String contractId) {
+	public void setContractId(int contractId) {
 		this.contractId = contractId;
 	}
 
-	public String getParentContractId() {
+	public int getParentContractId() {
 		return parentContractId;
 	}
 
-	public void setParentContractId(String parentContractId) {
+	public void setParentContractId(int parentContractId) {
 		this.parentContractId = parentContractId;
 	}
+	
+	public String getCustomContractId() {
+		return customContractId;
+	}
 
+	public void setCustomContractId(String customContractId) {
+		this.customContractId = customContractId;
+	}
+	
 	public String getDocumentFileName() {
 		return documentFileName;
 	}

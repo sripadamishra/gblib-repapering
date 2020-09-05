@@ -10,22 +10,22 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.gblib.core.repapering.model.User;
-import com.gblib.core.repapering.services.UserService;
+import com.gblib.core.repapering.model.LoanFinancialDetails;
+import com.gblib.core.repapering.services.LoanFinancialDetailsService;
 
 /**
  * @author SRIPADA MISHRA
  *
  */
 @RestController
-public class AuthController {
+public class LoanFinancialDetailsController {
 
 	@Autowired
-	UserService userService;
+	LoanFinancialDetailsService loanFinancialDetailsService;
 	
 		
-	@RequestMapping(value = "/find/user/{loginid}", method = RequestMethod.GET)
-	public @ResponseBody User getUserDetails(@PathVariable String loginid) {		
-		return userService.findByLoginId(loginid);
+	@RequestMapping(value = "/find/loan/{contractId}", method = RequestMethod.GET)
+	public @ResponseBody LoanFinancialDetails getLoanFinancialDetails(@PathVariable int contractId) {		
+		return loanFinancialDetailsService.findByContractId(contractId);
 	}
 }

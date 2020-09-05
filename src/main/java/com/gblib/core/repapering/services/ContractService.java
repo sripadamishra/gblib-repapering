@@ -20,7 +20,18 @@ public class ContractService {
 		return contract;
 	}
 	
+	@Transactional
+	public Contract findById(int id) {
+		
+		Contract contract = contractRepository.findById(id);		
+		return contract;
+	}
+	
 	public int setNewCurrStatusIdForContract(int currStatusId, int id) {
 		return contractRepository.setNewCurrStatusIdForContract(currStatusId,id);
+	}
+	
+	public Contract saveContract(Contract contract) {
+		return contractRepository.save(contract);
 	}
 }

@@ -17,7 +17,7 @@ import com.gblib.core.repapering.services.OCRService;
 	@Autowired
 	OCRService ocrService;
 	
-	@RequestMapping(value = "/ocr/convert/{input}", method = RequestMethod.GET)
+	@RequestMapping(value = "/convert/ocr/{input}", method = RequestMethod.GET)
 	public void converttoPdf(@PathVariable String input) {
 		ocrService.convert(input, "ocroutput.pdf");
 	}
