@@ -14,9 +14,16 @@ public class ContractService {
 	IContractRepository<Contract> contractRepository;
 	
 	@Transactional
-	public Contract findByContractId(String contractId) {
+	public Contract findByContractId(int contractId) {
 		
 		Contract contract = contractRepository.findByContractId(contractId);		
+		return contract;
+	}
+	
+	@Transactional
+	public Contract findByContractIdAndCurrStatusId(int contractId,int currStatusId) {
+		
+		Contract contract = contractRepository.findByContractIdAndCurrStatusId(contractId,currStatusId);		
 		return contract;
 	}
 	

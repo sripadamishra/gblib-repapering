@@ -12,8 +12,8 @@ public class OCRService {
 	IOCRProcessor ocrProcessor;
 	
 	
-	public void convert(String inputFile,String outputFile) {
-		ocrProcessor.convert(inputFile, outputFile);
+	public int convert(String inputFile,String outputFile) {
+		return ocrProcessor.convert(inputFile, outputFile);
 	}
 	
 }

@@ -11,9 +11,11 @@ import com.gblib.core.repapering.model.Contract;
 @Transactional
 public interface IContractRepository<U> extends CrudRepository<Contract,Long> {
 
-	Contract findByContractId(String contractId);
+	Contract findByContractId(int contractId);
 	
 	Contract findById(int id);
+	
+	Contract findByContractIdAndCurrStatusId(int contractId,int currStatusId);
 	
 	@Modifying
 	@Query("update Contract c set c.currStatusId = :currStatusId where c.id = :id")

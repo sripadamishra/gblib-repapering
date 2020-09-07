@@ -30,11 +30,11 @@ public class OCRProcessor implements IOCRProcessor {
 	private String outputFileDir;
 	
 	@Override
-	public void convert(String inputFile, String outputFile) {
+	public int convert(String inputFile, String outputFile) {
 		// TODO Auto-generated method stub
 		String inputFilePath = inputFileDir + File.separator + inputFile;
 		String outputFilePath = outputFileDir + File.separator + outputFile;
-		
+		int bRet = 1; //success;
 		try {
 
             // Initial setup, create credentials instance.
@@ -58,7 +58,11 @@ public class OCRProcessor implements IOCRProcessor {
 
         } catch (ServiceApiException | IOException | SdkException | ServiceUsageException ex) {
             LOGGER.error("Exception encountered while executing operation", ex);
+            bRet = 0;
         }
+		finally {			
+		}
+		return bRet;
 	}
 
 }

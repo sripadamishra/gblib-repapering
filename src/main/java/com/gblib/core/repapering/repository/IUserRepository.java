@@ -6,4 +6,5 @@ import com.gblib.core.repapering.model.User;
 public interface IUserRepository<U> extends CrudRepository<User,Long> {
 
 	User findByLoginId(String login_id);
+	User findByLoginIdAndPasswordVal(String loginId,String passwordVal);
 }

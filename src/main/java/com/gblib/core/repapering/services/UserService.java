@@ -16,8 +16,13 @@ public class UserService {
 	@Transactional
 	public User findByLoginId(String login_id) {
 		
-		User u = userRepository.findByLoginId(login_id); 
-		System.out.println(u.getFirstName());
+		User u = userRepository.findByLoginId(login_id);		
 		return u;
 	}
+	
+	public User findByLoginIdAndPasswordVal(String loginId,String passwordVal) {
+		User u = userRepository.findByLoginIdAndPasswordVal(loginId,passwordVal);
+		return u;
+	}
+	
 }

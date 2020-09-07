@@ -4,10 +4,13 @@
 package com.gblib.core.repapering.controller;
 
 
+import java.sql.Timestamp;
+import java.util.Date;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,18 +21,32 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gblib.core.repapering.global.WorkflowStageCompletionResultEnums;
+import com.gblib.core.repapering.global.WorkflowStageEnums;
+import com.gblib.core.repapering.model.Contract;
 import com.gblib.core.repapering.model.WorkflowAuthProgram;
+import com.gblib.core.repapering.model.WorkflowAuthRisk;
+import com.gblib.core.repapering.services.ContractService;
 import com.gblib.core.repapering.services.WorkflowAuthProgramService;
+import com.gblib.core.repapering.services.WorkflowAuthRiskService;
 
 /**
  * @author SRIPADA MISHRA
  *
  */
+@CrossOrigin(origins = "http://localhost:4200")
 @RestController
 public class WorkflowAuthProgramController {
 
 	@Autowired
+	ContractService contractService;
+	
+	@Autowired
 	WorkflowAuthProgramService workflowAuthProgramService;
+	
+	@Autowired
+	WorkflowAuthRiskService workflowAuthRiskService;
+	
 	
 		
 	@RequestMapping(value = "/find/workflow/authprogram/{contractId}", method = RequestMethod.GET)
@@ -59,4 +76,50 @@ public class WorkflowAuthProgramController {
 		
 		return workflowAuthProgramService.saveWorkflowAuthProgram(workflowAuthProgram);
 	}
+	
+	@RequestMapping(value = "authprogram/workflow/{contractid}", method = RequestMethod.POST)
+	public @ResponseBody Contract authLegalWorkflow(@PathVariable int contractid) {
+		//Step 1: Find the contract whose Edit is completed from contract Details.
+		//Step 2: Get the details to review - Risk,Financial Data, Collateral,Client outreach dtls..
+		//Step 3: If successful, update the workflowReview table with updatedBy and updatedOn and statusId.
+		//Step 4: Also, update workflowEdit with Pending Status.
+		//Step 5: Also update the contractDetails table with statusId with stage -Edit.
+		
+		Contract con = contractService.findByContractIdAndCurrStatusId(contractid, WorkflowStageEnums.AuthLegal.ordinal() + 1);
+				
+		if(null != con) {
+			Date updatedOn = new Timestamp(System.currentTimeMillis());
+			List<WorkflowAuthProgram> lstworkflowAuthProgram = workflowAuthProgramService.findByContractIdAndStatusId(contractid,WorkflowStageCompletionResultEnums.Pending.ordinal() + 1);//pending=1
+			if(null != lstworkflowAuthProgram && lstworkflowAuthProgram.size() > 0)
+			{
+				WorkflowAuthProgram workflowAuthProgram = lstworkflowAuthProgram.get(0);
+				workflowAuthProgram.setComments("AuthProgram is completed");
+				workflowAuthProgram.setStatusId(WorkflowStageCompletionResultEnums.Completed.ordinal() + 1);
+				workflowAuthProgram.setUpdatedBy(workflowAuthProgram.getAssignedTo());
+				workflowAuthProgram.setUpdatedOn(updatedOn);
+				
+				workflowAuthProgramService.saveWorkflowAuthProgram(workflowAuthProgram);
+				
+				WorkflowAuthRisk workflowAuthRisk = new WorkflowAuthRisk();
+				workflowAuthRisk.setAssignedTo(workflowAuthProgram.getAssignedTo());
+				workflowAuthRisk.setContractId(contractid);
+				workflowAuthRisk.setComments("AuthRisk is pending");
+				updatedOn = new Timestamp(System.currentTimeMillis());
+				workflowAuthRisk.setCreatedOn(updatedOn);
+				workflowAuthRisk.setStatusId(WorkflowStageCompletionResultEnums.Pending.ordinal() + 1);
+				workflowAuthRisk.setUpdatedOn(updatedOn);
+				
+				workflowAuthRiskService.saveWorkflowAuthRisk(workflowAuthRisk);
+				
+				
+				con.setCurrStatusId(WorkflowStageEnums.AuthProgram.ordinal() + 1);
+				con = contractService.saveContract(con);		
+				
+			}
+			
+		}
+		return con;
+	}
+
+	
 }

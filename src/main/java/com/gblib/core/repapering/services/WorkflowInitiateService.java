@@ -21,7 +21,14 @@ public class WorkflowInitiateService {
 	}
 	
 	@Transactional
-	public WorkflowInitiate saveWorkflowScanUpload(WorkflowInitiate workflowInitiate) {
+	public WorkflowInitiate findByContractIdAndStatusId(int contractId, int statusId) {
+		
+		WorkflowInitiate workflow = workflowInitiateRepository.findByContractIdAndStatusId(contractId,statusId);
+		return workflow;
+	}
+	
+	@Transactional
+	public WorkflowInitiate saveWorkflowInitiate(WorkflowInitiate workflowInitiate) {
 		return workflowInitiateRepository.save(workflowInitiate);
 	}
 }
