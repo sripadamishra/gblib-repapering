@@ -26,7 +26,6 @@ import com.gblib.core.repapering.services.WorkflowOCRService;
  * @author SRIPADA MISHRA
  *
  */
-@CrossOrigin(origins = "http://localhost:4200")
 @RestController
 public class WorkflowOCRController {
 

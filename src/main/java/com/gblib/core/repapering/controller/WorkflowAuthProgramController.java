@@ -34,7 +34,6 @@ import com.gblib.core.repapering.services.WorkflowAuthRiskService;
  * @author SRIPADA MISHRA
  *
  */
-@CrossOrigin(origins = "http://localhost:4200")
 @RestController
 public class WorkflowAuthProgramController {
 
@@ -77,8 +76,8 @@ public class WorkflowAuthProgramController {
 		return workflowAuthProgramService.saveWorkflowAuthProgram(workflowAuthProgram);
 	}
 	
-	@RequestMapping(value = "authprogram/workflow/{contractid}", method = RequestMethod.POST)
-	public @ResponseBody Contract authLegalWorkflow(@PathVariable int contractid) {
+	@RequestMapping(value = "authprogram/workflow", method = RequestMethod.POST)
+	public @ResponseBody WorkflowAuthProgram authLegalWorkflow(@RequestBody int contractid) {
 		//Step 1: Find the contract whose Edit is completed from contract Details.
 		//Step 2: Get the details to review - Risk,Financial Data, Collateral,Client outreach dtls..
 		//Step 3: If successful, update the workflowReview table with updatedBy and updatedOn and statusId.
@@ -86,19 +85,20 @@ public class WorkflowAuthProgramController {
 		//Step 5: Also update the contractDetails table with statusId with stage -Edit.
 		
 		Contract con = contractService.findByContractIdAndCurrStatusId(contractid, WorkflowStageEnums.AuthLegal.ordinal() + 1);
-				
+		WorkflowAuthProgram workflowAuthProgram = null;
+		
 		if(null != con) {
 			Date updatedOn = new Timestamp(System.currentTimeMillis());
 			List<WorkflowAuthProgram> lstworkflowAuthProgram = workflowAuthProgramService.findByContractIdAndStatusId(contractid,WorkflowStageCompletionResultEnums.Pending.ordinal() + 1);//pending=1
 			if(null != lstworkflowAuthProgram && lstworkflowAuthProgram.size() > 0)
 			{
-				WorkflowAuthProgram workflowAuthProgram = lstworkflowAuthProgram.get(0);
+				workflowAuthProgram = lstworkflowAuthProgram.get(0);
 				workflowAuthProgram.setComments("AuthProgram is completed");
 				workflowAuthProgram.setStatusId(WorkflowStageCompletionResultEnums.Completed.ordinal() + 1);
 				workflowAuthProgram.setUpdatedBy(workflowAuthProgram.getAssignedTo());
 				workflowAuthProgram.setUpdatedOn(updatedOn);
 				
-				workflowAuthProgramService.saveWorkflowAuthProgram(workflowAuthProgram);
+				workflowAuthProgram = workflowAuthProgramService.saveWorkflowAuthProgram(workflowAuthProgram);
 				
 				WorkflowAuthRisk workflowAuthRisk = new WorkflowAuthRisk();
 				workflowAuthRisk.setAssignedTo(workflowAuthProgram.getAssignedTo());
@@ -118,7 +118,7 @@ public class WorkflowAuthProgramController {
 			}
 			
 		}
-		return con;
+		return workflowAuthProgram;
 	}
 
 	

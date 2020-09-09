@@ -7,6 +7,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -22,7 +23,6 @@ import com.gblib.core.repapering.services.OCRService;
 import com.gblib.core.repapering.services.WorkflowInitiateService;
 import com.gblib.core.repapering.services.WorkflowOCRService;
 
-@CrossOrigin(origins = "http://localhost:4200")
 @RestController
  public class OCRController {
 
@@ -38,15 +38,15 @@ import com.gblib.core.repapering.services.WorkflowOCRService;
 	@Autowired
 	WorkflowInitiateService workflowInitiateService;
 	
-	@RequestMapping(value = "/ocr/workflow/{contractid}", method = RequestMethod.POST)
-	public @ResponseBody Contract converttoPdf(@PathVariable int contractid) {
+	@RequestMapping(value = "/ocr/workflow", method = RequestMethod.POST)
+	public @ResponseBody Contract converttoPdf(@RequestBody int contractid) {
 		//Get input
 		Contract con = contractService.findByContractIdAndCurrStatusId(contractid, WorkflowStageEnums.ScanUpload.ordinal()+1);		
 		//
 		if(null != con) {
 			String input =con.getDocumentFileName();
 			//Create output file name from the input appending with '_text'
-			String output = input.substring(0, input.indexOf(".pdf")) + "_text" + ".pdf";			
+			String output = input.substring(0, input.indexOf(".pdf")) + "_TEXT" + ".pdf";			
 			//int ret = ocrService.convert(input, output);
 			int ret = 1;
 			

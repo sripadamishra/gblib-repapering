@@ -6,6 +6,7 @@ package com.gblib.core.repapering.controller;
 
 import java.sql.Timestamp;
 import java.util.Date;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -23,9 +24,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gblib.core.repapering.global.WorkflowStageCompletionResultEnums;
 import com.gblib.core.repapering.global.WorkflowStageEnums;
 import com.gblib.core.repapering.model.Contract;
+import com.gblib.core.repapering.model.DocumentProcessingInfo;
 import com.gblib.core.repapering.model.WorkflowInitiate;
 import com.gblib.core.repapering.model.WorkflowReview;
 import com.gblib.core.repapering.services.ContractService;
+import com.gblib.core.repapering.services.DocumentProcessingInfoService;
 import com.gblib.core.repapering.services.WorkflowInitiateService;
 import com.gblib.core.repapering.services.WorkflowReviewService;
 
@@ -33,7 +36,6 @@ import com.gblib.core.repapering.services.WorkflowReviewService;
  * @author SRIPADA MISHRA
  *
  */
-@CrossOrigin(origins = "http://localhost:4200")
 @RestController
 public class WorkflowInitiateController {
 
@@ -47,6 +49,8 @@ public class WorkflowInitiateController {
 	@Autowired
 	WorkflowReviewService workflowReviewService;
 	
+	@Autowired
+	DocumentProcessingInfoService documentProcessingInfoService;
 
 		
 		
@@ -73,22 +77,28 @@ public class WorkflowInitiateController {
 		return workflowInitiateService.saveWorkflowInitiate(workflowInitiate);
 	}
 	
-	@RequestMapping(value = "initiate/workflow/{contractid}", method = RequestMethod.POST)
-	public @ResponseBody Contract initiateWorkflow(@PathVariable int contractid) {
+	@RequestMapping(value = "initiate/workflow", method = RequestMethod.POST)
+	public @ResponseBody Contract initiateWorkflow(@RequestBody int contractid) {
 		//Step 1: Find the contract whose OCR is completed from contract Details.
 		//Step 2: Perform the Initiate Operation. (Python Analytics,Read Excel and update DB.)
 		//Step 3: If successful, update the workflowInitiate table with updatedBy and updatedOn and statusId.
 		//Step 4: Also, update workflowReview with Pending Status.
 		//Step 5: Also update the contractDetails table with statusId with stage - Initiate.
 		Contract con = contractService.findByContractIdAndCurrStatusId(contractid, WorkflowStageEnums.OCR.ordinal()+1);
+		System.out.println("Contract found");
 		if(null != con) {
 			Date updatedOn = new Timestamp(System.currentTimeMillis());
 			WorkflowInitiate workflowInitiate = workflowInitiateService.findByContractIdAndStatusId(contractid,WorkflowStageCompletionResultEnums.Pending.ordinal() + 1);//pending=1
-			workflowInitiate.setComments("Initiate is completed");
-			workflowInitiate.setStatusId(WorkflowStageCompletionResultEnums.Completed.ordinal() + 1);
-			workflowInitiate.setUpdatedBy(workflowInitiate.getAssignedTo());
-			workflowInitiate.setUpdatedOn(updatedOn);
-			workflowInitiateService.saveWorkflowInitiate(workflowInitiate);
+			if(null != workflowInitiate) {
+				workflowInitiate.setComments("Initiate is completed");
+				workflowInitiate.setStatusId(WorkflowStageCompletionResultEnums.Completed.ordinal() + 1);
+				workflowInitiate.setUpdatedBy(workflowInitiate.getAssignedTo());
+				workflowInitiate.setUpdatedOn(updatedOn);
+				workflowInitiateService.saveWorkflowInitiate(workflowInitiate);
+
+				System.out.println("Workflow Initiate Saved.");
+			}
+			
 			
 			WorkflowReview workflowReview = new WorkflowReview();
 			workflowReview.setAssignedTo(workflowInitiate.getAssignedTo());
@@ -101,6 +111,71 @@ public class WorkflowInitiateController {
 			
 			workflowReviewService.saveWorkflowReview(workflowReview);
 			
+			System.out.println("Workflow Review Saved.");
+			//
+			//OCR is completed in this step. So fetch the analytics data based upon the OCR file name and update the Contract table.
+			String docFileName = con.getDocumentFileName();
+			System.out.println("docFilename=" + docFileName);
+			
+			List<DocumentProcessingInfo> lstDocuData = documentProcessingInfoService.findByDocFileName(docFileName);
+			
+			System.out.println("Find doc File Name=" + lstDocuData.toString());
+			
+			DocumentProcessingInfo docuData = null;
+			if(null != lstDocuData && lstDocuData.size() > 0) {
+				docuData = lstDocuData.get(0);
+			}
+			con.setContractStartDate(docuData.getStartDate());
+			con.setContractExpiryDate(docuData.getTerminationDate());
+			con.setCounterPartyName(docuData.getCounterPartyName());
+			con.setLegalEntityName(docuData.getLegalEntityName());
+			con.setCounterPartyName(docuData.getCounterPartyName());
+			
+			if(docuData.getIsLIBOR() == 'Y') {
+				con.setLIBOR(true);
+			}
+			else {
+				con.setLIBOR(false);
+			}
+			
+			String pred = docuData.getPredictions().toUpperCase();
+			
+			switch(pred) {
+			case "MORTGAGE":
+				con.setContractTypeId(1);
+				con.setContractSubTypeId(1);
+			break;
+			case "SYNDICATE":
+				con.setContractTypeId(1);
+				con.setContractSubTypeId(2);
+				break;
+			case "TERM":
+				con.setContractTypeId(1);
+				con.setContractSubTypeId(7);
+				break;
+			case "NORMAL":
+				con.setContractTypeId(1);
+				con.setContractSubTypeId(7);
+				break;
+			case "IRSWAP":
+				con.setContractTypeId(2);
+				con.setContractTypeId(6);				
+				break;
+			case "CURSWAP":
+				con.setContractTypeId(2);
+				con.setContractTypeId(5);
+				break;
+			case "ISDA":
+				con.setContractTypeId(2);
+				con.setContractTypeId(6); // Should be updated.
+				break;
+				default:
+				con.setContractTypeId(1);
+				con.setContractTypeId(1);
+				break;
+			}
+					
+			//
 			con.setCurrStatusId(WorkflowStageEnums.Initiate.ordinal() + 1);
 			contractService.saveContract(con);					
 		}

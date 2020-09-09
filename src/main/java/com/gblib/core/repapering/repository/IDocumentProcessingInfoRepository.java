@@ -7,5 +7,6 @@ import com.gblib.core.repapering.model.DocumentProcessingInfo;
 
 public interface IDocumentProcessingInfoRepository<U> extends CrudRepository<DocumentProcessingInfo,Long> {
 
-	List<DocumentProcessingInfo> findByContractId(int contractId);
+	List<DocumentProcessingInfo> findByCounterPartyName(String counterPartyName);
+	List<DocumentProcessingInfo> findByDocFileName(String docFileName);
 }

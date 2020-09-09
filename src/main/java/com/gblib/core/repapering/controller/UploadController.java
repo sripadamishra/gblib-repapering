@@ -30,7 +30,6 @@ import com.gblib.core.repapering.services.WorkflowScanUploadService;
  * @author SRIPADA MISHRA
  *
  */
-@CrossOrigin(origins = "http://localhost:4200")
 @RestController
 public class UploadController {
 

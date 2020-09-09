@@ -34,7 +34,6 @@ import com.gblib.core.repapering.services.WorkflowAuthProgramService;
  * @author SRIPADA MISHRA
  *
  */
-@CrossOrigin(origins = "http://localhost:4200")
 @RestController
 public class WorkflowAuthLegalController {
 
@@ -76,8 +75,8 @@ public class WorkflowAuthLegalController {
 		return workflowAuthLegalService.saveWorkflowAuthLegal(workflowAuthLegal);
 	}
 	
-	@RequestMapping(value = "authlegal/workflow/{contractid}", method = RequestMethod.POST)
-	public @ResponseBody Contract authLegalWorkflow(@PathVariable int contractid) {
+	@RequestMapping(value = "authlegal/workflow", method = RequestMethod.POST)
+	public @ResponseBody WorkflowAuthLegal authLegalWorkflow(@RequestBody int contractid) {
 		//Step 1: Find the contract whose Edit is completed from contract Details.
 		//Step 2: Get the details to review - Risk,Financial Data, Collateral,Client outreach dtls..
 		//Step 3: If successful, update the workflowReview table with updatedBy and updatedOn and statusId.
@@ -85,19 +84,19 @@ public class WorkflowAuthLegalController {
 		//Step 5: Also update the contractDetails table with statusId with stage -Edit.
 		
 		Contract con = contractService.findByContractIdAndCurrStatusId(contractid, WorkflowStageEnums.Edit.ordinal() + 1);
-				
-		if(null != con) {
+		WorkflowAuthLegal workflowAuthLegal = null;		
+		if(null != con) { 
 			Date updatedOn = new Timestamp(System.currentTimeMillis());
 			List<WorkflowAuthLegal> lstworkflowAuthLegal = workflowAuthLegalService.findByContractIdAndStatusId(contractid,WorkflowStageCompletionResultEnums.Pending.ordinal() + 1);//pending=1
 			if(null != lstworkflowAuthLegal && lstworkflowAuthLegal.size() > 0)
 			{
-				WorkflowAuthLegal workflowAuthLegal = lstworkflowAuthLegal.get(0);
+				workflowAuthLegal = lstworkflowAuthLegal.get(0);				
 				workflowAuthLegal.setComments("AuthLegal is completed");
 				workflowAuthLegal.setStatusId(WorkflowStageCompletionResultEnums.Completed.ordinal() + 1);
 				workflowAuthLegal.setUpdatedBy(workflowAuthLegal.getAssignedTo());
 				workflowAuthLegal.setUpdatedOn(updatedOn);
 				
-				workflowAuthLegalService.saveWorkflowAuthLegal(workflowAuthLegal);
+				workflowAuthLegal = workflowAuthLegalService.saveWorkflowAuthLegal(workflowAuthLegal);
 				
 				WorkflowAuthProgram workflowAuthProgram = new WorkflowAuthProgram();
 				workflowAuthProgram.setAssignedTo(workflowAuthLegal.getAssignedTo());
@@ -117,7 +116,11 @@ public class WorkflowAuthLegalController {
 			}
 			
 		}
-		return con;
+		//Print it
+		System.out.println("AuthLegal-AssignedTo" + workflowAuthLegal.getAssignedTo());
+		System.out.println("AuthLegal-ContractId" + workflowAuthLegal.getContractId());
+		//
+		return workflowAuthLegal;
 	}
 	
 }

@@ -29,7 +29,6 @@ import com.gblib.core.repapering.services.FileStorageService;
 import com.gblib.core.repapering.services.WorkflowOCRService;
 import com.gblib.core.repapering.services.WorkflowScanUploadService;
 
-@CrossOrigin(origins = "http://localhost:4200")
 @RestController
 public class FileUploadController {
 	@Autowired

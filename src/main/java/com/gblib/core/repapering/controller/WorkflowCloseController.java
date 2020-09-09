@@ -32,7 +32,6 @@ import com.gblib.core.repapering.services.WorkflowCloseService;
  * @author SRIPADA MISHRA
  *
  */
-@CrossOrigin(origins = "http://localhost:4200")
 @RestController
 public class WorkflowCloseController {
 
@@ -73,8 +72,8 @@ public class WorkflowCloseController {
 	}
 	
 	
-	@RequestMapping(value = "close/workflow/{contractid}", method = RequestMethod.POST)
-	public @ResponseBody Contract authCloseWorkflow(@PathVariable int contractid) {
+	@RequestMapping(value = "close/workflow", method = RequestMethod.POST)
+	public @ResponseBody Contract authCloseWorkflow(@RequestBody int contractid) {
 		//Step 1: Find the contract whose Edit is completed from contract Details.
 		//Step 2: Get the details to review - Risk,Financial Data, Collateral,Client outreach dtls..
 		//Step 3: If successful, update the workflowReview table with updatedBy and updatedOn and statusId.

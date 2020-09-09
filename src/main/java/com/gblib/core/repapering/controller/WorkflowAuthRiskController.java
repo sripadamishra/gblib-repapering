@@ -34,7 +34,6 @@ import com.gblib.core.repapering.services.WorkflowAuthTreasuryService;
  * @author SRIPADA MISHRA
  *
  */
-@CrossOrigin(origins = "http://localhost:4200")
 @RestController
 public class WorkflowAuthRiskController {
 
@@ -76,8 +75,8 @@ public class WorkflowAuthRiskController {
 		return workflowAuthRiskService.saveWorkflowAuthRisk(workflowAuthRisk);
 	}
 	
-	@RequestMapping(value = "authrisk/workflow/{contractid}", method = RequestMethod.POST)
-	public @ResponseBody Contract authRiskWorkflow(@PathVariable int contractid) {
+	@RequestMapping(value = "authrisk/workflow", method = RequestMethod.POST)
+	public @ResponseBody WorkflowAuthRisk authRiskWorkflow(@RequestBody int contractid) {
 		//Step 1: Find the contract whose Edit is completed from contract Details.
 		//Step 2: Get the details to review - Risk,Financial Data, Collateral,Client outreach dtls..
 		//Step 3: If successful, update the workflowReview table with updatedBy and updatedOn and statusId.
@@ -85,13 +84,13 @@ public class WorkflowAuthRiskController {
 		//Step 5: Also update the contractDetails table with statusId with stage -Edit.
 		
 		Contract con = contractService.findByContractIdAndCurrStatusId(contractid, WorkflowStageEnums.AuthProgram.ordinal() + 1);
-				
+		WorkflowAuthRisk workflowAuthRisk = null;		
 		if(null != con) {
 			Date updatedOn = new Timestamp(System.currentTimeMillis());
 			List<WorkflowAuthRisk> lstworkflowAuthRisk = workflowAuthRiskService.findByContractIdAndStatusId(contractid,WorkflowStageCompletionResultEnums.Pending.ordinal() + 1);//pending=1
 			if(null != lstworkflowAuthRisk && lstworkflowAuthRisk.size() > 0)
 			{
-				WorkflowAuthRisk workflowAuthRisk = lstworkflowAuthRisk.get(0);
+				workflowAuthRisk = lstworkflowAuthRisk.get(0);
 				workflowAuthRisk.setComments("AuthRisk is completed");
 				workflowAuthRisk.setStatusId(WorkflowStageCompletionResultEnums.Completed.ordinal() + 1);
 				workflowAuthRisk.setUpdatedBy(workflowAuthRisk.getAssignedTo());
@@ -117,7 +116,7 @@ public class WorkflowAuthRiskController {
 			}
 			
 		}
-		return con;
+		return workflowAuthRisk;
 }
 
 }

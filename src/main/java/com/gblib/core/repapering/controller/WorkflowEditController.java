@@ -34,7 +34,6 @@ import com.gblib.core.repapering.services.WorkflowEditService;
  * @author SRIPADA MISHRA
  *
  */
-@CrossOrigin(origins = "http://localhost:4200")
 @RestController
 public class WorkflowEditController {
 
@@ -77,8 +76,8 @@ public class WorkflowEditController {
 	}
 	
 	
-	@RequestMapping(value = "edit/workflow/{contractid}", method = RequestMethod.POST)
-	public @ResponseBody Contract editWorkflow(@PathVariable int contractid) {
+	@RequestMapping(value = "edit/workflow", method = RequestMethod.POST)
+	public @ResponseBody Contract editWorkflow(@RequestBody int contractid) {
 		//Step 1: Find the contract whose Review(4) is completed from contract Details.
 		//Step 2: Get the details to review - Risk,Financial Data, Collateral,Client outreach dtls..
 		//Step 3: If successful, update the workflowReview table with updatedBy and updatedOn and statusId.

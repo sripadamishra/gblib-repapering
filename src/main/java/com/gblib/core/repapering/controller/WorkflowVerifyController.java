@@ -34,7 +34,6 @@ import com.gblib.core.repapering.services.WorkflowVerifyService;
  * @author SRIPADA MISHRA
  *
  */
-@CrossOrigin(origins = "http://localhost:4200")
 @RestController
 public class WorkflowVerifyController {
 
@@ -76,8 +75,8 @@ public class WorkflowVerifyController {
 		return workflowVerifyService.saveWorkflowVerify(workflowVerify);
 	}
 	
-	@RequestMapping(value = "verify/workflow/{contractid}", method = RequestMethod.POST)
-	public @ResponseBody Contract authVerifyWorkflow(@PathVariable int contractid) {
+	@RequestMapping(value = "verify/workflow", method = RequestMethod.POST)
+	public @ResponseBody Contract authVerifyWorkflow(@RequestBody int contractid) {
 		//Step 1: Find the contract whose Edit is completed from contract Details.
 		//Step 2: Get the details to review - Risk,Financial Data, Collateral,Client outreach dtls..
 		//Step 3: If successful, update the workflowReview table with updatedBy and updatedOn and statusId.

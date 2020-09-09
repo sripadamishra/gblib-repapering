@@ -34,7 +34,6 @@ import com.gblib.core.repapering.services.WorkflowVerifyService;
  * @author SRIPADA MISHRA
  *
  */
-@CrossOrigin(origins = "http://localhost:4200")
 @RestController
 public class WorkflowAuthTreasuryController {
 
@@ -76,8 +75,8 @@ public class WorkflowAuthTreasuryController {
 		return workflowAuthTreasuryService.saveWorkflowAuthTreasury(workflowAuthTreasury);
 	}
 	
-	@RequestMapping(value = "authtreasury/workflow/{contractid}", method = RequestMethod.POST)
-	public @ResponseBody Contract authRiskWorkflow(@PathVariable int contractid) {
+	@RequestMapping(value = "authtreasury/workflow", method = RequestMethod.POST)
+	public @ResponseBody WorkflowAuthTreasury authRiskWorkflow(@RequestBody int contractid) {
 		//Step 1: Find the contract whose Edit is completed from contract Details.
 		//Step 2: Get the details to review - Risk,Financial Data, Collateral,Client outreach dtls..
 		//Step 3: If successful, update the workflowReview table with updatedBy and updatedOn and statusId.
@@ -85,13 +84,13 @@ public class WorkflowAuthTreasuryController {
 		//Step 5: Also update the contractDetails table with statusId with stage -Edit.
 		
 		Contract con = contractService.findByContractIdAndCurrStatusId(contractid, WorkflowStageEnums.AuthRisk.ordinal() + 1);
-				
+		WorkflowAuthTreasury workflowAuthTreasury = null;		
 		if(null != con) {
 			Date updatedOn = new Timestamp(System.currentTimeMillis());
 			List<WorkflowAuthTreasury> lstworkflowAuthTreasury = workflowAuthTreasuryService.findByContractIdAndStatusId(contractid,WorkflowStageCompletionResultEnums.Pending.ordinal() + 1);//pending=1
 			if(null != lstworkflowAuthTreasury && lstworkflowAuthTreasury.size() > 0)
 			{
-				WorkflowAuthTreasury workflowAuthTreasury = lstworkflowAuthTreasury.get(0);
+				workflowAuthTreasury = lstworkflowAuthTreasury.get(0);
 				workflowAuthTreasury.setComments("AuthTreasury is completed");
 				workflowAuthTreasury.setStatusId(WorkflowStageCompletionResultEnums.Completed.ordinal() + 1);
 				workflowAuthTreasury.setUpdatedBy(workflowAuthTreasury.getAssignedTo());
@@ -117,7 +116,7 @@ public class WorkflowAuthTreasuryController {
 			}
 			
 		}
-		return con;
+		return workflowAuthTreasury;
 }
 
 }
