@@ -26,6 +26,7 @@ import com.gblib.core.repapering.model.WorkflowOCR;
 import com.gblib.core.repapering.model.WorkflowScanUpload;
 import com.gblib.core.repapering.services.ContractService;
 import com.gblib.core.repapering.services.FileStorageService;
+import com.gblib.core.repapering.services.RegulatoryEventDomainContextService;
 import com.gblib.core.repapering.services.WorkflowOCRService;
 import com.gblib.core.repapering.services.WorkflowScanUploadService;
 
@@ -42,6 +43,7 @@ public class FileUploadController {
 	
 	@Autowired
 	ContractService contractService;
+		
 	
     @PostMapping("/uploadFile")
     public Contract uploadFile(@RequestParam("file") MultipartFile file,@RequestParam("userid") String userid) {
@@ -87,7 +89,7 @@ public class FileUploadController {
     		contract.setCurrStatusId(WorkflowStageEnums.ScanUpload.ordinal()+1); // ScanUpload
     		contract.setCreatedBy(userid);
     		contract.setCreatedOn(createdOn);
-    		contract = contractService.saveContract(contract);		
+    		contract = contractService.saveContract(contract);    		    		    		
     		
     		return contract;
     	}

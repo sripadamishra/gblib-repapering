@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -28,9 +29,15 @@ public class DomainContractConfigurationController {
 	DomainContractConfigurationService domainContractConfigurationService;
 	
 		
-	@RequestMapping(value = "/find/domaincontext/{contractid}", method = RequestMethod.GET)	
+	@RequestMapping(value = "/find/domainccontractfields/{contractid}", method = RequestMethod.GET)	
 	public @ResponseBody List<DomainContractConfiguration> findByContractIdAndRegulatoryEventId(@PathVariable int contractid) {
 		int eventid = 1;
 		return domainContractConfigurationService.findByContractIdAndRegulatoryEventId(contractid,eventid);
+	}
+	
+	
+	@RequestMapping(value = "/save/domainccontractfields", method = RequestMethod.POST)
+	public @ResponseBody List<DomainContractConfiguration> save(@RequestBody List<DomainContractConfiguration> configDtls) {
+		return domainContractConfigurationService.save(configDtls);
 	}
 }

@@ -28,12 +28,44 @@ public class DomainContractConfiguration {
 	@Column(name = "isContextConfigurationActive")
 	private boolean isContextConfigurationActive;
 	
-	@Column(name = "textSimilarity")
-	private int textSimilarity;
-	
-	@Column(name = "domaincontextCurrentFieldValue")
-	private String domaincontextCurrentFieldValue;
-	
-	@Column(name = "domaincontextProposedFieldValue")
-	private String domaincontextProposedFieldValue;
+	public int getDomainContractConfigurationId() {
+		return domainContractConfigurationId;
+	}
+
+	public void setDomainContractConfigurationId(int domainContractConfigurationId) {
+		this.domainContractConfigurationId = domainContractConfigurationId;
+	}
+
+	public int getContractId() {
+		return contractId;
+	}
+
+	public void setContractId(int contractId) {
+		this.contractId = contractId;
+	}
+
+	public int getRegulatoryEventId() {
+		return regulatoryEventId;
+	}
+
+	public void setRegulatoryEventId(int regulatoryEventId) {
+		this.regulatoryEventId = regulatoryEventId;
+	}
+
+	public String getDomainContextDictionaryId() {
+		return domainContextDictionaryId;
+	}
+
+	public void setDomainContextDictionaryId(String domainContextDictionaryId) {
+		this.domainContextDictionaryId = domainContextDictionaryId;
+	}
+
+	public boolean isContextConfigurationActive() {
+		return isContextConfigurationActive;
+	}
+
+	public void setContextConfigurationActive(boolean isContextConfigurationActive) {
+		this.isContextConfigurationActive = isContextConfigurationActive;
+	}
+
 }

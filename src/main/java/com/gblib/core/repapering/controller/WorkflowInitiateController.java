@@ -5,6 +5,7 @@ package com.gblib.core.repapering.controller;
 
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -25,12 +26,17 @@ import com.gblib.core.repapering.global.WorkflowStageCompletionResultEnums;
 import com.gblib.core.repapering.global.WorkflowStageEnums;
 import com.gblib.core.repapering.model.Contract;
 import com.gblib.core.repapering.model.CounterParty;
+import com.gblib.core.repapering.model.DocumentMetaData;
 import com.gblib.core.repapering.model.DocumentProcessingInfo;
+import com.gblib.core.repapering.model.DomainContractConfiguration;
+import com.gblib.core.repapering.model.RegulatoryEventDomainContext;
 import com.gblib.core.repapering.model.WorkflowInitiate;
 import com.gblib.core.repapering.model.WorkflowReview;
 import com.gblib.core.repapering.services.ContractService;
 import com.gblib.core.repapering.services.CounterPartyService;
 import com.gblib.core.repapering.services.DocumentProcessingInfoService;
+import com.gblib.core.repapering.services.DomainContractConfigurationService;
+import com.gblib.core.repapering.services.RegulatoryEventDomainContextService;
 import com.gblib.core.repapering.services.WorkflowInitiateService;
 import com.gblib.core.repapering.services.WorkflowReviewService;
 
@@ -55,7 +61,13 @@ public class WorkflowInitiateController {
 	DocumentProcessingInfoService documentProcessingInfoService;
 
 	@Autowired
-	CounterPartyService counterPartyService;	
+	CounterPartyService counterPartyService;
+	
+	@Autowired
+	RegulatoryEventDomainContextService regulatoryEventDomainContextService;
+	
+	@Autowired
+	DomainContractConfigurationService domainContractConfigurationService;
 		
 	@RequestMapping(value = "/find/workflow/initiate/{contractId}", method = RequestMethod.GET)
 	public @ResponseBody WorkflowInitiate getWorkflowInitiateDetails(@PathVariable int contractId) {		
@@ -118,6 +130,23 @@ public class WorkflowInitiateController {
 			System.out.println("Workflow Review Saved.");
 			//
 			//OCR is completed in this step. So fetch the analytics data based upon the OCR file name and update the Contract table.
+			//Before initiating the Analytics process - 
+			//Save the domaincontext data for this contract..
+			int contractType = 1; //default is loan
+			//Try to call Python Script or Classification API here and get the contractType.Default it is 1.
+			List<DomainContractConfiguration> domainContractConfigDtls = addDomainContextForContract(contractType, contractid);
+			System.out.println("Domain context for the Contract Configuration is save for contract=." + contractid);
+			//Now read the PDF and Populate 
+			//Create the documentMetaData list as per the Active DomainContext
+			List<DocumentMetaData> contractDocMetaData =getContractDocMetaData(domainContractConfigDtls,contractType);
+			
+			//Call PdfReader to find the match with document header with the context Values definition match
+			//If match is found, identify the text portion and save it in metadata document.
+			//contractDocMetaData = analysetDatafromContractDoc(contractDocMetaData);
+			//Call Python to start the analytics and further populate the meta data document.
+			
+	
+			//
 			String docFileName = con.getDocumentFileName();
 			System.out.println("docFilename=" + docFileName);
 			
@@ -193,6 +222,76 @@ public class WorkflowInitiateController {
 			contractService.saveContract(con);					
 		}
 		return con;
+	}
+	
+	private List<DomainContractConfiguration> addDomainContextForContract(int contractType, int contractId) {
+
+		List<RegulatoryEventDomainContext> domainDtls = regulatoryEventDomainContextService.findByContractType(contractType);
+		List<DomainContractConfiguration> contractConfigDtls = null;
+
+		if(null != domainDtls) {
+
+			contractConfigDtls = new ArrayList<DomainContractConfiguration>();
+
+			for(RegulatoryEventDomainContext eachdomainContext:domainDtls) {
+
+				if(null != eachdomainContext) {
+					DomainContractConfiguration config = new DomainContractConfiguration();
+					config.setContractId(contractId);
+					config.setRegulatoryEventId(1);
+					config.setDomainContextDictionaryId(eachdomainContext.getDomainContextDictionaryId());
+					config.setContextConfigurationActive(true);					
+					contractConfigDtls.add(config);
+				}
+			}
+
+			contractConfigDtls = domainContractConfigurationService.save(contractConfigDtls);
+		}		
+		return contractConfigDtls;		
+	}
+	
+	private List<DocumentMetaData> getContractDocMetaData(List<DomainContractConfiguration> domainContractConfigDtls,int contractType){
+		List<DocumentMetaData> contractDocMetaData = new ArrayList<DocumentMetaData>();
+		//Get all domain context
+		List<RegulatoryEventDomainContext> domainDtls = regulatoryEventDomainContextService.findByContractType(contractType);
+		DocumentMetaData docmetadata = null;
+		for(DomainContractConfiguration config:domainContractConfigDtls) {
+			
+			if(null != config && config.isContextConfigurationActive()) {
+				docmetadata = new DocumentMetaData();				
+				RegulatoryEventDomainContext domainCtxDtl = fetchDomainContextDetails(config.getDomainContextDictionaryId(),domainDtls);
+				docmetadata = mapToMetaData(docmetadata,domainCtxDtl);				
+				contractDocMetaData.add(docmetadata);
+			}			
+		}
+		return contractDocMetaData;
+	}
+	
+	private RegulatoryEventDomainContext fetchDomainContextDetails(String domainContextDictionaryId,List<RegulatoryEventDomainContext> domainDtls){
+		RegulatoryEventDomainContext domainCtxDtlFound = null;
+		for(RegulatoryEventDomainContext domainCtx:domainDtls) {
+			if(null != domainCtx && domainCtx.getDomainContextDictionaryId().compareToIgnoreCase(domainContextDictionaryId)==0) {
+				domainCtxDtlFound = domainCtx;
+				break;
+			}
+		}
+		return domainCtxDtlFound;
+	}
+	
+	private DocumentMetaData mapToMetaData(DocumentMetaData docmetadata, RegulatoryEventDomainContext domainCtxDtl) {
+		if( null != docmetadata && null != domainCtxDtl) {
+			docmetadata.setContractType(domainCtxDtl.getContractType());
+			docmetadata.setDomainContextDictionaryId(domainCtxDtl.getDomainContextDictionaryId());
+			docmetadata.setDomainContextName(domainCtxDtl.getDomainContextName());
+			docmetadata.setDomainContextPossibleNameDefinitions(domainCtxDtl.getDomainContextPossibleNameDefinitions());
+			docmetadata.setDomainContextPossibleValueDefinitions(domainCtxDtl.getDomainContextPossibleValueDefinitions());
+			docmetadata.setDomainContextSubTypeId(domainCtxDtl.getDomainContextSubTypeId());
+			docmetadata.setDomainContextTypeId(domainCtxDtl.getDomainContextTypeId());
+			docmetadata.setEntityRule(domainCtxDtl.getEntityRule());
+			docmetadata.setPhraseRule(domainCtxDtl.getPhraseRule());
+			docmetadata.setContractType(domainCtxDtl.getContractType());
+		}
+		return docmetadata;
 	}
 	
 }

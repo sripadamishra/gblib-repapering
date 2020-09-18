@@ -1,29 +1,43 @@
 package com.gblib.core.repapering.model;
 
-public class DocumentMetaData {
+import javax.persistence.Column;
 
-	String headerName;
-	String headerContext;
-	int headerPageNo;
-	String headerTextContent;
-	int    headerParagraphIndex;
-	String headerFontName;
-	String headerFontSize;
-	float startLocationX;
-	float startLocationY;
-	float endLocationX;
-	float endLocationY;
+public class DocumentMetaData {    
+	//
+	private String headerName;	
+	private int headerPageNo;
+	private String headerTextContent;
+	private int    headerParagraphIndex;
+	private String headerFontName;
+	private String headerFontSize;
+	private float startLocationX;
+	private float startLocationY;
+	private float endLocationX;
+	private float endLocationY;
+	
+	//
+	private int regulatoryEventId;
+	private int contractType;
+	private String domainContextDictionaryId;
+	private String domainContextName;
+	private int domainContextTypeId;
+	private int domainContextSubTypeId;
+	private String domainContextPossibleNameDefinitions;
+	private String domainContextPossibleValueDefinitions;
+	private String phraseRule;
+	private String entityRule;
+	private String referenceExamples;
+    
+	//	
+	private int textSimilarity;	
+	private String domaincontextCurrentFieldValue;	
+	private String domaincontextProposedFieldValue;
+	//	
 	public String getHeaderName() {
 		return headerName;
 	}
 	public void setHeaderName(String headerName) {
 		this.headerName = headerName;
-	}
-	public String getHeaderContext() {
-		return headerContext;
-	}
-	public void setHeaderContext(String headerContext) {
-		this.headerContext = headerContext;
 	}
 	public int getHeaderPageNo() {
 		return headerPageNo;
@@ -79,4 +93,88 @@ public class DocumentMetaData {
 	public void setEndLocationY(float endLocationY) {
 		this.endLocationY = endLocationY;
 	}
-}
+	public int getRegulatoryEventId() {
+		return regulatoryEventId;
+	}
+	public void setRegulatoryEventId(int regulatoryEventId) {
+		this.regulatoryEventId = regulatoryEventId;
+	}
+	public int getContractType() {
+		return contractType;
+	}
+	public void setContractType(int contractType) {
+		this.contractType = contractType;
+	}
+	public String getDomainContextDictionaryId() {
+		return domainContextDictionaryId;
+	}
+	public void setDomainContextDictionaryId(String domainContextDictionaryId) {
+		this.domainContextDictionaryId = domainContextDictionaryId;
+	}
+	public String getDomainContextName() {
+		return domainContextName;
+	}
+	public void setDomainContextName(String domainContextName) {
+		this.domainContextName = domainContextName;
+	}
+	public int getDomainContextTypeId() {
+		return domainContextTypeId;
+	}
+	public void setDomainContextTypeId(int domainContextTypeId) {
+		this.domainContextTypeId = domainContextTypeId;
+	}
+	public int getDomainContextSubTypeId() {
+		return domainContextSubTypeId;
+	}
+	public void setDomainContextSubTypeId(int domainContextSubTypeId) {
+		this.domainContextSubTypeId = domainContextSubTypeId;
+	}
+	public String getDomainContextPossibleNameDefinitions() {
+		return domainContextPossibleNameDefinitions;
+	}
+	public void setDomainContextPossibleNameDefinitions(String domainContextPossibleNameDefinitions) {
+		this.domainContextPossibleNameDefinitions = domainContextPossibleNameDefinitions;
+	}
+	public String getDomainContextPossibleValueDefinitions() {
+		return domainContextPossibleValueDefinitions;
+	}
+	public void setDomainContextPossibleValueDefinitions(String domainContextPossibleValueDefinitions) {
+		this.domainContextPossibleValueDefinitions = domainContextPossibleValueDefinitions;
+	}
+	public String getPhraseRule() {
+		return phraseRule;
+	}
+	public void setPhraseRule(String phraseRule) {
+		this.phraseRule = phraseRule;
+	}
+	public String getEntityRule() {
+		return entityRule;
+	}
+	public void setEntityRule(String entityRule) {
+		this.entityRule = entityRule;
+	}
+	public String getReferenceExamples() {
+		return referenceExamples;
+	}
+	public void setReferenceExamples(String referenceExamples) {
+		this.referenceExamples = referenceExamples;
+	}
+	public int getTextSimilarity() {
+		return textSimilarity;
+	}
+	public void setTextSimilarity(int textSimilarity) {
+		this.textSimilarity = textSimilarity;
+	}
+	public String getDomaincontextCurrentFieldValue() {
+		return domaincontextCurrentFieldValue;
+	}
+	public void setDomaincontextCurrentFieldValue(String domaincontextCurrentFieldValue) {
+		this.domaincontextCurrentFieldValue = domaincontextCurrentFieldValue;
+	}
+	public String getDomaincontextProposedFieldValue() {
+		return domaincontextProposedFieldValue;
+	}
+	public void setDomaincontextProposedFieldValue(String domaincontextProposedFieldValue) {
+		this.domaincontextProposedFieldValue = domaincontextProposedFieldValue;
+	}
+	}

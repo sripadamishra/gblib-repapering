@@ -1,9 +1,12 @@
 package com.gblib.core.repapering.services;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.gblib.core.repapering.model.RegulatoryEventDomainContext;
 import com.gblib.core.repapering.model.WorkflowInitiate;
 import com.gblib.core.repapering.repository.IWorkflowInitiateRepository;
 
@@ -12,7 +15,7 @@ public class WorkflowInitiateService {
 
 	@Autowired
 	IWorkflowInitiateRepository<WorkflowInitiate> workflowInitiateRepository;
-	
+			
 	@Transactional
 	public WorkflowInitiate findByContractId(int contractId) {
 		
@@ -31,4 +34,5 @@ public class WorkflowInitiateService {
 	public WorkflowInitiate saveWorkflowInitiate(WorkflowInitiate workflowInitiate) {
 		return workflowInitiateRepository.save(workflowInitiate);
 	}
+	
 }
