@@ -19,4 +19,11 @@ public class DerivativeFinancialDetailsService {
 		DerivativeFinancialDetails derivativeDetails = derivativeFinancialDetailsRepository.findByContractId(contractId);
 		return derivativeDetails;
 	}
+	
+	public DerivativeFinancialDetails findByCounterPartyId(int counterPartyId) {
+		
+		DerivativeFinancialDetails derivativeDetails = derivativeFinancialDetailsRepository.findByCounterPartyId(counterPartyId);
+		return derivativeDetails;
+	}
+	
 }

@@ -24,10 +24,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gblib.core.repapering.global.WorkflowStageCompletionResultEnums;
 import com.gblib.core.repapering.global.WorkflowStageEnums;
 import com.gblib.core.repapering.model.Contract;
+import com.gblib.core.repapering.model.CounterParty;
 import com.gblib.core.repapering.model.DocumentProcessingInfo;
 import com.gblib.core.repapering.model.WorkflowInitiate;
 import com.gblib.core.repapering.model.WorkflowReview;
 import com.gblib.core.repapering.services.ContractService;
+import com.gblib.core.repapering.services.CounterPartyService;
 import com.gblib.core.repapering.services.DocumentProcessingInfoService;
 import com.gblib.core.repapering.services.WorkflowInitiateService;
 import com.gblib.core.repapering.services.WorkflowReviewService;
@@ -52,7 +54,8 @@ public class WorkflowInitiateController {
 	@Autowired
 	DocumentProcessingInfoService documentProcessingInfoService;
 
-		
+	@Autowired
+	CounterPartyService counterPartyService;	
 		
 	@RequestMapping(value = "/find/workflow/initiate/{contractId}", method = RequestMethod.GET)
 	public @ResponseBody WorkflowInitiate getWorkflowInitiateDetails(@PathVariable int contractId) {		
@@ -101,7 +104,8 @@ public class WorkflowInitiateController {
 			
 			
 			WorkflowReview workflowReview = new WorkflowReview();
-			workflowReview.setAssignedTo(workflowInitiate.getAssignedTo());
+			if(null != workflowInitiate)
+				workflowReview.setAssignedTo(workflowInitiate.getAssignedTo());
 			workflowReview.setContractId(contractid);
 			workflowReview.setComments("Review is pending");
 			updatedOn = new Timestamp(System.currentTimeMillis());
@@ -128,6 +132,15 @@ public class WorkflowInitiateController {
 			con.setContractStartDate(docuData.getStartDate());
 			con.setContractExpiryDate(docuData.getTerminationDate());
 			con.setCounterPartyName(docuData.getCounterPartyName());
+			//
+			int counterPartyId = 0;
+			
+			CounterParty counterParty = counterPartyService.findByCounterPartyName(docuData.getCounterPartyName());
+			if(null != counterParty) {
+				counterPartyId = counterParty.getCounterPartyId();
+				con.setCounterPartyId(counterPartyId);
+			}						
+			//
 			con.setLegalEntityName(docuData.getLegalEntityName());
 			con.setCounterPartyName(docuData.getCounterPartyName());
 			
@@ -159,19 +172,19 @@ public class WorkflowInitiateController {
 				break;
 			case "IRSWAP":
 				con.setContractTypeId(2);
-				con.setContractTypeId(6);				
+				con.setContractSubTypeId(6);				
 				break;
 			case "CURSWAP":
 				con.setContractTypeId(2);
-				con.setContractTypeId(5);
+				con.setContractSubTypeId(5);
 				break;
 			case "ISDA":
 				con.setContractTypeId(2);
-				con.setContractTypeId(6); // Should be updated.
+				con.setContractSubTypeId(6); // Should be updated.
 				break;
 				default:
 				con.setContractTypeId(1);
-				con.setContractTypeId(1);
+				con.setContractSubTypeId(1);
 				break;
 			}
 					

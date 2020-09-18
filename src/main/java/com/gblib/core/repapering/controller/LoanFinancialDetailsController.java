@@ -26,7 +26,7 @@ public class LoanFinancialDetailsController {
 	
 		
 	@RequestMapping(value = "/find/loan", method = RequestMethod.POST)
-	public @ResponseBody LoanFinancialDetails getLoanFinancialDetails(@RequestBody int contractId) {		
-		return loanFinancialDetailsService.findByContractId(contractId);
+	public @ResponseBody LoanFinancialDetails getLoanFinancialDetails(@RequestBody int counterPartyId) {		
+		return loanFinancialDetailsService.findByCounterPartyId(counterPartyId);
 	}
 }

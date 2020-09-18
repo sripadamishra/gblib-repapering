@@ -26,7 +26,7 @@ public class DerivativeFinancialDetailsController {
 	
 	 	
 	@RequestMapping(value = "/find/derivative", method = RequestMethod.POST)
-	public @ResponseBody DerivativeFinancialDetails getDerivativeFinancialDetails(@RequestBody int contractId) {		
-		return derivativeFinancialDetailsService.findByContractId(contractId);
+	public @ResponseBody DerivativeFinancialDetails getDerivativeFinancialDetails(@RequestBody int counterPartyId) {		
+		return derivativeFinancialDetailsService.findByCounterPartyId(counterPartyId);
 	}
 }

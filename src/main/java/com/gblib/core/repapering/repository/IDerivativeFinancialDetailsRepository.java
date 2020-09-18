@@ -6,4 +6,5 @@ import com.gblib.core.repapering.model.DerivativeFinancialDetails;
 public interface IDerivativeFinancialDetailsRepository<U> extends CrudRepository<DerivativeFinancialDetails,Long> {
 
 	DerivativeFinancialDetails findByContractId(int contractId);
+	DerivativeFinancialDetails findByCounterPartyId(int counterPartyId);
 }

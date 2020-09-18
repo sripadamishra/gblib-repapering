@@ -84,7 +84,7 @@ public class WorkflowAuthLegalController {
 		//Step 5: Also update the contractDetails table with statusId with stage -Edit.
 		
 		Contract con = contractService.findByContractIdAndCurrStatusId(contractid, WorkflowStageEnums.Edit.ordinal() + 1);
-		WorkflowAuthLegal workflowAuthLegal = null;		
+		WorkflowAuthLegal workflowAuthLegal = null;
 		if(null != con) { 
 			Date updatedOn = new Timestamp(System.currentTimeMillis());
 			List<WorkflowAuthLegal> lstworkflowAuthLegal = workflowAuthLegalService.findByContractIdAndStatusId(contractid,WorkflowStageCompletionResultEnums.Pending.ordinal() + 1);//pending=1

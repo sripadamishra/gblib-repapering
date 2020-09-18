@@ -29,8 +29,8 @@ public class ContractController {
 	ContractService contractService;
 	
 		
-	@RequestMapping(value = "find/contract/{contractId}", method = RequestMethod.GET)
-	public @ResponseBody Contract getContractDetails(@PathVariable int contractId) {
+	@RequestMapping(value = "find/contract", method = RequestMethod.POST)
+	public @ResponseBody Contract getContractDetails(@RequestBody int contractId) {
 		return contractService.findByContractId(contractId);
 	}
 	

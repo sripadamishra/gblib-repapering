@@ -19,4 +19,10 @@ public class LoanFinancialDetailsService {
 		LoanFinancialDetails loanDetails = loanFinancialDetailsRepository.findByContractId(contractId);
 		return loanDetails;
 	}
+	
+	public LoanFinancialDetails findByCounterPartyId(int counterPartyId) {
+		
+		LoanFinancialDetails loanDetails = loanFinancialDetailsRepository.findByCounterPartyId(counterPartyId);
+		return loanDetails;
+	}
 }
