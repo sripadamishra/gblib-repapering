@@ -128,7 +128,7 @@ public class S3bucketController {
     }
     
     @GetMapping(value= "/download")
-    public ResponseEntity<ByteArrayResource> downloadFile(@RequestParam(value= "fileName") final String keyName) {
+    public ResponseEntity<ByteArrayResource> downloadFile(@RequestParam(value= "fileName") final String keyName) throws Exception {
         final byte[] data = amazonClient.downloadFile(keyName); 
         //writeByte(data);;
         final ByteArrayResource resource = new ByteArrayResource(data);

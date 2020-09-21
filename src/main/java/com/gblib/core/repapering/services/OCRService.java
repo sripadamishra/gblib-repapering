@@ -16,4 +16,8 @@ public class OCRService {
 		return ocrProcessor.convert(inputFile, outputFile);
 	}
 	
+	public int downloadFromS3andConvert(String inputFileName,String outputFileName) {
+		return ocrProcessor.downloadAndConvert(inputFileName, outputFileName);
+	}
+	
 }

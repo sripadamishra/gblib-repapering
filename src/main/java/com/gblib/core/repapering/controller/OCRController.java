@@ -38,7 +38,7 @@ import com.gblib.core.repapering.services.WorkflowOCRService;
 	@Autowired
 	WorkflowInitiateService workflowInitiateService;
 	
-	@RequestMapping(value = "/ocr/workflow", method = RequestMethod.POST)
+	@RequestMapping(value = "v1/ocr/workflow", method = RequestMethod.POST)
 	public @ResponseBody Contract converttoPdf(@RequestBody int contractid) {
 		//Get input
 		Contract con = contractService.findByContractIdAndCurrStatusId(contractid, WorkflowStageEnums.ScanUpload.ordinal()+1);		
@@ -88,6 +88,62 @@ import com.gblib.core.repapering.services.WorkflowOCRService;
 				//Save into ContractDetails table // update currStatusId = OCR(2)
 				con.setCurrStatusId(WorkflowStageEnums.OCR.ordinal()+1);
 				con.setDocumentFileName(output);
+				con = contractService.saveContract(con);
+			}		
+		}
+		return con;
+	}
+	
+	@RequestMapping(value = "/ocr/workflow", method = RequestMethod.POST)
+	public @ResponseBody Contract converttoPdfAndUploadToS3(@RequestBody int contractid) {
+		//Get input
+		Contract con = contractService.findByContractIdAndCurrStatusId(contractid, WorkflowStageEnums.ScanUpload.ordinal()+1);		
+		//
+		if(null != con) {
+			String inputFileName =con.getDocumentFileName();
+			//Create output file name from the input appending with '_text'
+			String outputFileName = inputFileName.substring(0, inputFileName.indexOf(".pdf")) + "_TEXT" + ".pdf";
+			int ret = 1;
+			ret = ocrService.downloadFromS3andConvert(inputFileName, outputFileName);
+			//ret = 1; // overwrite it.
+			
+			//Save into ContractWorkflowOCR table
+			//Get the Pending record
+			List<WorkflowOCR> lstworkflowPendingOCR = workflowOCRService.findByContractIdAndStatusId(contractid, WorkflowStageCompletionResultEnums.Pending.ordinal() + 1);
+			
+			if(null != lstworkflowPendingOCR && lstworkflowPendingOCR.size() > 0)
+			{
+				WorkflowOCR workflowPendingOCR = lstworkflowPendingOCR.get(0);
+				Date updatedOn = new Timestamp(System.currentTimeMillis());
+				int statusId = WorkflowStageCompletionResultEnums.Completed.ordinal() + 1; //Completed
+				String comments = "";
+				comments = "Scan File  is OCRed successfully.";
+				if(0 == ret) {
+					statusId = WorkflowStageCompletionResultEnums.Pending.ordinal() + 1;
+					comments = "Scan File  OCR process is failed!";
+				}
+
+				workflowPendingOCR.setStatusId(statusId);
+				workflowPendingOCR.setComments(comments);
+				workflowPendingOCR.setUpdatedBy(con.getCreatedBy());
+				workflowPendingOCR.setUpdatedOn(updatedOn);
+				workflowOCRService.saveWorkflowOCR(workflowPendingOCR);
+				//Step 2: Save to WorkflowInitiate with Pending
+				
+				WorkflowInitiate workflowInitiate = new WorkflowInitiate();				
+				workflowInitiate.setAssignedTo(con.getCreatedBy());
+				workflowInitiate.setComments("Initiate is Pending.");
+				workflowInitiate.setContractId(con.getContractId());
+				workflowInitiate.setStatusId(WorkflowStageCompletionResultEnums.Pending.ordinal() + 1);//Pending
+				updatedOn = new Timestamp(System.currentTimeMillis());
+				workflowInitiate.setCreatedOn(updatedOn);
+				workflowInitiate.setUpdatedOn(updatedOn);
+				workflowInitiateService.saveWorkflowInitiate(workflowInitiate);
+				
+				//Step 3: Save to ContractDetails
+				//Save into ContractDetails table // update currStatusId = OCR(2)
+				con.setCurrStatusId(WorkflowStageEnums.OCR.ordinal()+1);
+				con.setDocumentFileName(outputFileName);
 				con = contractService.saveContract(con);
 			}		
 		}
