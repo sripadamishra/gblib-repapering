@@ -46,13 +46,12 @@ public class OCRProcessor implements IOCRProcessor {
             ExecutionContext executionContext = ExecutionContext.create(credentials);
             OCROperation ocrOperation = OCROperation.createNew();
 
-            // Set operation input from a source file.
+            // Set operation input from a source file.            
             FileRef source = FileRef.createFromLocalFile(inputFilePath);
             ocrOperation.setInput(source);
 
             // Execute the operation
-            FileRef result = ocrOperation.execute(executionContext);
-
+            FileRef result = ocrOperation.execute(executionContext);            
             // Save the result at the specified location
             result.saveAs(outputFilePath);
 

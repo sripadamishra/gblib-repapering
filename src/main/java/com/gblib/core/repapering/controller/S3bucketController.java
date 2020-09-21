@@ -58,7 +58,7 @@ public class S3bucketController {
 	
 	@Autowired
 	ContractService contractService;
-	@PostMapping("/uploadFile")
+	@PostMapping("/v1/uploadFile")
     public Contract uploadFile(@RequestParam("file") MultipartFile file,@RequestParam("userid") String userid) {
         String fileName = fileStorageService.storeFile(file);
 
@@ -129,7 +129,7 @@ public class S3bucketController {
     
     @GetMapping(value= "/download")
     public ResponseEntity<ByteArrayResource> downloadFile(@RequestParam(value= "fileName") final String keyName) {
-        final byte[] data = amazonClient.downloadFile(keyName);
+        final byte[] data = amazonClient.downloadFile(keyName); 
         //writeByte(data);;
         final ByteArrayResource resource = new ByteArrayResource(data);
         return ResponseEntity

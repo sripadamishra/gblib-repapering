@@ -4,6 +4,8 @@
 package com.gblib.core.repapering.controller;
 
 
+import java.io.File;
+import java.io.IOException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Date;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,6 +37,7 @@ import com.gblib.core.repapering.model.WorkflowInitiate;
 import com.gblib.core.repapering.model.WorkflowReview;
 import com.gblib.core.repapering.services.ContractService;
 import com.gblib.core.repapering.services.CounterPartyService;
+import com.gblib.core.repapering.services.DocumentAnalyticsService;
 import com.gblib.core.repapering.services.DocumentProcessingInfoService;
 import com.gblib.core.repapering.services.DomainContractConfigurationService;
 import com.gblib.core.repapering.services.RegulatoryEventDomainContextService;
@@ -68,7 +72,10 @@ public class WorkflowInitiateController {
 	
 	@Autowired
 	DomainContractConfigurationService domainContractConfigurationService;
-		
+	
+	@Autowired
+	DocumentAnalyticsService documentAnalyticsService;
+	
 	@RequestMapping(value = "/find/workflow/initiate/{contractId}", method = RequestMethod.GET)
 	public @ResponseBody WorkflowInitiate getWorkflowInitiateDetails(@PathVariable int contractId) {		
 		return workflowInitiateService.findByContractId(contractId);
@@ -138,20 +145,30 @@ public class WorkflowInitiateController {
 			System.out.println("Domain context for the Contract Configuration is save for contract=." + contractid);
 			//Now read the PDF and Populate 
 			//Create the documentMetaData list as per the Active DomainContext
-			List<DocumentMetaData> contractDocMetaData =getContractDocMetaData(domainContractConfigDtls,contractType);
+			List<DocumentMetaData> activeDomainDtls =getContractDocMetaData(domainContractConfigDtls,contractType);
+			 
+			documentAnalyticsService.analyseDatafromContractDoc(activeDomainDtls,contractid);
 			
-			//Call PdfReader to find the match with document header with the context Values definition match
-			//If match is found, identify the text portion and save it in metadata document.
-			//contractDocMetaData = analysetDatafromContractDoc(contractDocMetaData);
-			//Call Python to start the analytics and further populate the meta data document.
-			
-	
-			//
+			//Print JSON data.
+			ObjectMapper mapper = new ObjectMapper();
+			try {
+				mapper.writeValue(System.out, activeDomainDtls);
+			} catch (JsonGenerationException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (JsonMappingException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+						
 			String docFileName = con.getDocumentFileName();
 			System.out.println("docFilename=" + docFileName);
 			
 			List<DocumentProcessingInfo> lstDocuData = documentProcessingInfoService.findByDocFileName(docFileName);
-			
+			 
 			System.out.println("Find doc File Name=" + lstDocuData.toString());
 			
 			DocumentProcessingInfo docuData = null;

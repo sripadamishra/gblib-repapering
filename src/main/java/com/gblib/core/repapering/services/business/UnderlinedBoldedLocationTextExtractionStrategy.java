@@ -63,7 +63,8 @@ public class UnderlinedBoldedLocationTextExtractionStrategy extends LocationText
     	if(null != renderInfo) {
     		TextChunkInfo textChunkInfo = new TextChunkInfo(renderInfo);        
     		allLocations.add(textChunkInfo);
-
+    		
+    		
     		if (renderInfo.getFont().getPostscriptFontName().contains("Bold"))
     			//Add this to our found collection
     			foundItems.add(new TextChunkInfo(renderInfo));
@@ -107,12 +108,7 @@ public class UnderlinedBoldedLocationTextExtractionStrategy extends LocationText
                 		header.append(info.getText());
                 	}
                 	else {
-                		sb.append("\r\n");
-                		//test-debug
-                		if(header.toString().compareToIgnoreCase("SECTION 2.11. Increased Costs and Capital Adequacy") == 0) {
-                			System.out.println("Found");
-                		}
-                		//
+                		sb.append("\r\n");                		
                 		docMetaData.add(CreateMetaDataInstance(lastFound,header));
                 		header.setLength(0);//Reinitialize it.
                 		header.append(info.getText());

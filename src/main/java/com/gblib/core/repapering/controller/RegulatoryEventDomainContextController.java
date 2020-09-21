@@ -28,8 +28,9 @@ public class RegulatoryEventDomainContextController {
 	RegulatoryEventDomainContextService regulatoryEventDomainContextService;
 	
 		
-	@RequestMapping(value = "/find/domaincontextfields/{contracttype}", method = RequestMethod.GET)
-	public @ResponseBody List<RegulatoryEventDomainContext> getDomainContextDetails(@PathVariable int contracttype) {		
-		return regulatoryEventDomainContextService.findByContractType(contracttype);	
+	@RequestMapping(value = "/get/domaindata/global", method = RequestMethod.GET)
+	public @ResponseBody List<RegulatoryEventDomainContext> getDomainContextDetails() {
+		int contracttype = 1; //default loan..need to change later with parameter based for derivatives.
+		return regulatoryEventDomainContextService.findByContractType(contracttype);
 	}
 }

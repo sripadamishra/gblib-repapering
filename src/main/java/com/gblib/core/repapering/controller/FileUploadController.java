@@ -45,7 +45,7 @@ public class FileUploadController {
 	ContractService contractService;
 		
 	
-    @PostMapping("/v1/uploadFile")
+    @PostMapping("/uploadFile")
     public Contract uploadFile(@RequestParam("file") MultipartFile file,@RequestParam("userid") String userid) {
         String fileName = fileStorageService.storeFile(file);
 
