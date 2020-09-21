@@ -3,6 +3,8 @@
  */
 package com.gblib.core.repapering.controller;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,7 +30,13 @@ public class ContractController {
 	@Autowired
 	ContractService contractService;
 	
+	
+	@RequestMapping(value = "get/contracts/all", method = RequestMethod.GET)
+	public @ResponseBody List<Contract> getAllContracts() {
+		return contractService.getAllContracts();
 		
+	}
+	
 	@RequestMapping(value = "find/contract", method = RequestMethod.POST)
 	public @ResponseBody Contract getContractDetails(@RequestBody int contractId) {
 		return contractService.findByContractId(contractId);

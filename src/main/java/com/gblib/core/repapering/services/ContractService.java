@@ -1,5 +1,7 @@
 package com.gblib.core.repapering.services;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,6 +14,11 @@ public class ContractService {
 
 	@Autowired
 	IContractRepository<Contract> contractRepository;
+	
+	public List<Contract> getAllContracts(){
+		List<Contract> contracts = contractRepository.getAllContracts();
+		return contracts;
+	}
 	
 	@Transactional
 	public Contract findByContractId(int contractId) {

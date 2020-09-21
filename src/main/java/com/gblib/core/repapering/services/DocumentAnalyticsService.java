@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import com.gblib.core.repapering.model.Contract;
 import com.gblib.core.repapering.model.DocumentMetaData;
+import com.gblib.core.repapering.model.DocumentMetaDataExtended;
 import com.gblib.core.repapering.model.DocumentProcessingInfo;
 import com.gblib.core.repapering.services.business.UnderlinedBoldedLocationTextExtractionStrategy;
 import com.itextpdf.text.Rectangle;
@@ -55,7 +56,8 @@ public class DocumentAnalyticsService {
 	PdfReader pdfReader = null;
 	private List<DocumentProcessingInfo> listdocProcessingInfo = null;
 	private String docFileName = null;
-	
+	private DocumentMetaDataExtended docMetaDataExtended = null;
+	private List<String> listpageLevelOnlyRawText = null;
 	//
 	private void getUnderlinedText(int pageno) {
 		PdfDictionary page = pdfReader.getPageN(pageno);
@@ -481,6 +483,26 @@ public class DocumentAnalyticsService {
 		System.out.println("Find Matched Headers as per Configured Context:Completed");
 	}
 	
+	private void getPageLevelRawText() {
+		listpageLevelOnlyRawText = new ArrayList<String>();
+		String text = "";
+		for(int i=1;i<=pdfReader.getNumberOfPages();i++) {
+			
+			try {
+				text = PdfTextExtractor.getTextFromPage(pdfReader, i);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			listpageLevelOnlyRawText.add(text);
+		}
+	}
+	public DocumentMetaDataExtended getExtendedMetaData() {
+		DocumentMetaDataExtended extendedMetadata = new DocumentMetaDataExtended();
+		extendedMetadata.setListdocumentMetaData(listOnlyConfiguredContextHeaders);
+		extendedMetadata.setListpageLevelOnlyRawText(listpageLevelOnlyRawText);
+		return extendedMetadata;
+	}
 	public void analyseDatafromContractDoc(List<DocumentMetaData> activeDomainDtls,int contractId) {
 		listOnlyConfiguredContextHeaders = activeDomainDtls;
 		System.out.println("Data Analysis for each active Context:Started");
@@ -498,6 +520,8 @@ public class DocumentAnalyticsService {
 				findMatchHeadersfromContractDoc(contractId);
 				//New logic to find out the underline text as earlier Bold Text finding is not working...
 				//
+				//Get page level raw text Data.
+				getPageLevelRawText();
 				pdfReader.close();
 				//Now Send to Python for analysis-
 				

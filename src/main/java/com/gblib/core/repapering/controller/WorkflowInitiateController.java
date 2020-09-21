@@ -12,6 +12,7 @@ import java.util.Date;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,6 +31,7 @@ import com.gblib.core.repapering.global.WorkflowStageEnums;
 import com.gblib.core.repapering.model.Contract;
 import com.gblib.core.repapering.model.CounterParty;
 import com.gblib.core.repapering.model.DocumentMetaData;
+import com.gblib.core.repapering.model.DocumentMetaDataExtended;
 import com.gblib.core.repapering.model.DocumentProcessingInfo;
 import com.gblib.core.repapering.model.DomainContractConfiguration;
 import com.gblib.core.repapering.model.RegulatoryEventDomainContext;
@@ -75,6 +77,11 @@ public class WorkflowInitiateController {
 	
 	@Autowired
 	DocumentAnalyticsService documentAnalyticsService;
+	@Value("${gblib.core.repapering.text.analytics.metadatadir}")
+	private String analyticsDir;
+	
+	@Value("${gblib.core.repapering.text.analytics.docmetadata.filename}")
+	private String docMetadataFilename;
 	
 	@RequestMapping(value = "/find/workflow/initiate/{contractId}", method = RequestMethod.GET)
 	public @ResponseBody WorkflowInitiate getWorkflowInitiateDetails(@PathVariable int contractId) {		
@@ -149,10 +156,14 @@ public class WorkflowInitiateController {
 			 
 			documentAnalyticsService.analyseDatafromContractDoc(activeDomainDtls,contractid);
 			
+			DocumentMetaDataExtended extendedMetadata = documentAnalyticsService.getExtendedMetaData();
+			
+			//Create extended metadata and write here.
+			writetoJSONFile(contractid,extendedMetadata);
 			//Print JSON data.
 			ObjectMapper mapper = new ObjectMapper();
 			try {
-				mapper.writeValue(System.out, activeDomainDtls);
+				mapper.writeValue(System.out, extendedMetadata);
 			} catch (JsonGenerationException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -310,5 +321,31 @@ public class WorkflowInitiateController {
 		}
 		return docmetadata;
 	}
+	
+	//
+private void writetoJSONFile(int contractId,DocumentMetaDataExtended extendedMetadata) {
+		
+		String outFilePath ="";
+				
+		if(docMetadataFilename.isEmpty()) {
+			docMetadataFilename = "_DOCMETADATA.JSON";
+		}
+		
+		outFilePath = analyticsDir +File.separator + contractId + docMetadataFilename;
+		ObjectMapper mapper = new ObjectMapper();
+		try {
+			mapper.writeValue(new File(outFilePath), extendedMetadata);
+		} catch (JsonGenerationException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (JsonMappingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	//
 	
 }
