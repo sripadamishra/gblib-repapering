@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+
 import org.json.XML;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,11 +21,13 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.core.JsonGenerationException;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gblib.core.repapering.global.WorkflowStageEnums;
 import com.gblib.core.repapering.model.Contract;
 import com.gblib.core.repapering.model.DocumentMetaData;
+import com.gblib.core.repapering.model.DocumentUpdateRequest;
 import com.gblib.core.repapering.model.LiborDocument;
 import com.gblib.core.repapering.services.ContractService;
 import com.gblib.core.repapering.services.FileParsingService;
@@ -36,6 +39,7 @@ import com.itextpdf.text.Document;
 import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.Element;
 import com.itextpdf.text.Font;
+import com.itextpdf.text.Font.FontFamily;
 import com.itextpdf.text.FontFactory;
 import com.itextpdf.text.Paragraph;
 import com.itextpdf.text.Rectangle;
@@ -49,12 +53,15 @@ import com.itextpdf.text.pdf.PdfStamper;
 import com.itextpdf.text.pdf.PdfWriter;
 import com.itextpdf.text.pdf.parser.FilteredTextRenderListener;
 import com.itextpdf.text.pdf.parser.LocationTextExtractionStrategy;
+import com.itextpdf.text.pdf.parser.PdfContentStreamProcessor;
 import com.itextpdf.text.pdf.parser.PdfReaderContentParser;
 import com.itextpdf.text.pdf.parser.PdfTextExtractor;
 import com.itextpdf.text.pdf.parser.RegionTextRenderFilter;
 import com.itextpdf.text.pdf.parser.RenderFilter;
 import com.itextpdf.text.pdf.parser.RenderListener;
 import com.itextpdf.text.pdf.parser.TextMarginFinder;
+import com.itextpdf.text.pdf.pdfcleanup.PdfCleanUpLocation;
+import com.itextpdf.text.pdf.pdfcleanup.PdfCleanUpProcessor;
 
 @RestController
 public class PdfDocumentEditController {
@@ -73,6 +80,8 @@ public class PdfDocumentEditController {
 	
 	@Value("${gblib.core.repapering.text.analytics.domaincontextmetadata.filename}")
 	private String domainMetadataFilename;
+	
+	private DocumentUpdateRequest documentUpdateRequest = null; 
 	
 	@RequestMapping(value = "/generate/contract/docmetadata/{contractId}", method = RequestMethod.GET)
 	public @ResponseBody List<DocumentMetaData> readPdf(@PathVariable int contractId)	{		
@@ -108,7 +117,41 @@ public class PdfDocumentEditController {
 		return docMetadata;
 	}
 	
-	@RequestMapping(value = "/modify/contract", method = RequestMethod.POST)
+	@RequestMapping(value = "/edit/contract", method = RequestMethod.POST)
+	public @ResponseBody String rewritePdf(@RequestBody String docmetadat) {
+		String text = "Doc is updated sucesfully.";
+		String docFileName = "",docFilePath = "";
+		String updatedDocFileName = "",updatedDocFilePath = "";
+		// Convert the docmetadata into DocumentUpdateRequest		
+		
+		Contract con = null;
+		int contractId = 0;
+		ObjectMapper mapper = new ObjectMapper();
+		try {
+			documentUpdateRequest = mapper.readValue(docmetadat, DocumentUpdateRequest.class);
+			if(documentUpdateRequest != null) {
+				con = contractService.findByContractId(documentUpdateRequest.getContractId());
+				if(con != null) {
+					docFileName = con.getDocumentFileName();
+					updatedDocFileName = docFileName.substring(0, docFileName.indexOf(".pdf")) + "_UPDATED" + ".pdf";
+					docFilePath = analyticsDir + File.separator + docFileName;
+					updatedDocFilePath = analyticsDir + File.separator + updatedDocFileName;
+					updateContract(docFilePath,updatedDocFilePath);
+				}
+			}
+			
+		} catch (JsonMappingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (JsonProcessingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return text;
+	}
+	
+	
+	@RequestMapping(value = "/modify/contract", method = RequestMethod.GET)
 	public @ResponseBody String editPdf(/*@RequestBody int contractid*/) {
 	
 		//Contract con = contractService.findByContractIdAndCurrStatusId(contractid, WorkflowStageEnums.Edit.ordinal() + 1);				
@@ -148,10 +191,10 @@ public class PdfDocumentEditController {
 				
 				
 				
-				PdfImportedPage page = pdfStamper.getImportedPage(pdfReader, 1);
+				PdfImportedPage page = pdfStamper.getImportedPage(pdfReader, 30);
 				int i=0;
 				while(true) {
-					pdfStamper.insertPage(++i,pdfReader.getPageSize(1));
+					pdfStamper.insertPage(30,pdfReader.getPageSize(30));
 					//pdfStamper.getUnderContent(i).addTemplate(page,0,0);
 					ct.setCanvas(pdfStamper.getOverContent(i));
 					ct.setSimpleColumn(10,10,600,200);
@@ -175,6 +218,101 @@ public class PdfDocumentEditController {
 	    
 		return newFileName;
 	}
+	
+	private void updateContract(String inputFile, String updatedFile){
+		
+		PdfReader pdfReader = null;
+		PdfStamper pdfStamper = null;
+		Font fontBoldHeader = null;
+		Font fontNormalBody = null;
+		Rectangle rectHeader=null, rectBody = null;
+		//Get margin data
+		TextMarginFinder finder = null;
+		PdfReaderContentParser parser = null;
+		int pageNo = 1, pageIndex = 0;
+		float llx=0.0f,lly=0.0f,uux=0.0f,uuy=0.0f;
+		String[] arrSplit = null;
+		DocumentMetaData prev = null,next = null;
+		List<PdfCleanUpLocation> pdfCleanUpLocations = null; 
+
+		List<DocumentMetaData> metadata = null;
+		try {
+			pdfReader = new PdfReader(inputFile);
+			pdfStamper = new PdfStamper(pdfReader,new FileOutputStream(updatedFile));
+			fontBoldHeader = new Font(FontFamily.TIMES_ROMAN,10,Font.BOLD,BaseColor.BLACK);
+			fontNormalBody = new Font(FontFamily.TIMES_ROMAN,10,Font.NORMAL,BaseColor.BLUE);			
+			if(documentUpdateRequest != null) {
+				metadata= documentUpdateRequest.getListDocumentMetadata();
+				if(metadata != null) {
+					for(DocumentMetaData fieldDetail:metadata) {						
+						if(fieldDetail != null && fieldDetail.isDictionaryIdupdateRequired()) {
+							pageNo = fieldDetail.getHeaderPageNo(); 
+							parser = new PdfReaderContentParser(pdfReader);
+							prev = fieldDetail;
+							next = metadata.get(pageIndex+1);
+							if(next != null) {
+								finder = parser.processContent(pageNo, new TextMarginFinder());
+								if(finder!= null) {
+									llx = finder.getLlx();
+									lly = next.getStartLocationY() + 6; //may need to add lineheight instead of 2.
+									uux = finder.getUrx();
+									uuy = prev.getStartLocationY() +5;
+									rectBody = new Rectangle(llx,lly,uux,uuy);
+									pdfCleanUpLocations = new ArrayList<PdfCleanUpLocation>();
+									pdfCleanUpLocations.add(new PdfCleanUpLocation(pageNo,rectBody,BaseColor.WHITE));
+									
+									PdfContentByte cb = pdfStamper.getOverContent(pageNo);
+									ColumnText ct = new ColumnText(cb);
+									ct.setSimpleColumn(rectBody);
+									
+									String textPlusHeader = fieldDetail.getDomainContextName() + ":" + "\n" + fieldDetail.getDomaincontextProposedFieldValue(); 
+									
+									arrSplit = textPlusHeader.split("\\r?\\n");
+									int i =0;
+									Font fontSelected =null;
+									if(arrSplit != null) {
+										for(String line:arrSplit) {
+											if(i ==0) {
+												fontSelected = fontBoldHeader;												
+											}
+											else {
+												fontSelected = fontNormalBody;												
+											}
+											Paragraph para = new Paragraph(12,line,fontSelected);									
+											ct.addElement(para);
+											ct.go();
+											
+											i++;
+										}
+									}
+								}		
+							}
+						}
+						pageIndex++;
+					}
+				}
+			}								
+		} catch (IOException | DocumentException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		try {
+			PdfCleanUpProcessor processor = new PdfCleanUpProcessor(pdfCleanUpLocations, pdfStamper);
+			processor.cleanUp();
+			pdfStamper.close();
+			pdfReader.close();
+		} catch (DocumentException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return;
+	}
+	
 	
 	private String removeTrailingChars(String input) {
 		return input.replace('.', '\0').replace(':', '\0'); //Replace trailing . and :

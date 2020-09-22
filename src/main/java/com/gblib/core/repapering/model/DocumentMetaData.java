@@ -27,7 +27,7 @@ public class DocumentMetaData {
 	private String phraseRule;
 	private String entityRule;
 	private String referenceExamples;
-    
+    private boolean dictionaryIdupdateRequired;
 	//	
 	private int textSimilarity;	
 	private String domaincontextCurrentFieldValue;	
@@ -158,6 +158,12 @@ public class DocumentMetaData {
 	}
 	public void setReferenceExamples(String referenceExamples) {
 		this.referenceExamples = referenceExamples;
+	}
+	public boolean isDictionaryIdupdateRequired() {
+		return dictionaryIdupdateRequired;
+	}
+	public void setDictionaryIdupdateRequired(boolean dictionaryIdupdateRequired) {
+		this.dictionaryIdupdateRequired = dictionaryIdupdateRequired;
 	}
 	public int getTextSimilarity() {
 		return textSimilarity;
