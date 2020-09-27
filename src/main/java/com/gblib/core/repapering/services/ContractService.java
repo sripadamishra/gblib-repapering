@@ -27,6 +27,11 @@ public class ContractService {
 		return contract;
 	}
 	
+	public List<Contract> findByCurrStatusId(int currStatusId) {		
+		List<Contract> contracts = contractRepository.findByCurrStatusId(currStatusId);		
+		return contracts;
+	}
+	
 	@Transactional
 	public Contract findByContractIdAndCurrStatusId(int contractId,int currStatusId) {
 		

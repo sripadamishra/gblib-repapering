@@ -35,7 +35,7 @@ public class OCRProcessor implements IOCRProcessor {
 	@Value("${gblib.core.repapering.ocr.inputdir}")
 	private String inputFileDir;
 
-	@Value("${gblib.core.repaperinr̥g.ocr.outputdir}")
+	@Value("${gblib.core.repapering.ocr.outputdir}")
 	private String outputFileDir;
 
 	@Autowired
@@ -97,8 +97,13 @@ public class OCRProcessor implements IOCRProcessor {
 			LOGGER.info("Successfully complete OCR");	
 
 		} catch (Exception ex) {
-			LOGGER.error("Exception encountered while executing operation", ex);
+			LOGGER.error("Exception encountered while executing operation.", ex);
 			bRet = 0;
+			//
+			// Overwrite the return value with 1 and upload file to S3 manually to handle the failure of OCR process.
+			bRet = 1;
+			LOGGER.info("Return val is overwritten with success.");
+			//
 		} finally {
 		}
 		return bRet;

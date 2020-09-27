@@ -10,7 +10,10 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -37,6 +40,7 @@ import com.gblib.core.repapering.model.DomainContractConfiguration;
 import com.gblib.core.repapering.model.RegulatoryEventDomainContext;
 import com.gblib.core.repapering.model.WorkflowInitiate;
 import com.gblib.core.repapering.model.WorkflowReview;
+import com.gblib.core.repapering.services.AmazonClient;
 import com.gblib.core.repapering.services.ContractService;
 import com.gblib.core.repapering.services.CounterPartyService;
 import com.gblib.core.repapering.services.DocumentAnalyticsService;
@@ -69,19 +73,28 @@ public class WorkflowInitiateController {
 	@Autowired
 	CounterPartyService counterPartyService;
 	
+	private static final Logger LOGGER = LoggerFactory.getLogger(WorkflowInitiateController.class);
+	
 	@Autowired
 	RegulatoryEventDomainContextService regulatoryEventDomainContextService;
 	
 	@Autowired
 	DomainContractConfigurationService domainContractConfigurationService;
-	
+			
 	@Autowired
 	DocumentAnalyticsService documentAnalyticsService;
+	
+	@Autowired
+	private AmazonClient amazonClient;
+	
 	@Value("${gblib.core.repapering.text.analytics.metadatadir}")
 	private String analyticsDir;
 	
 	@Value("${gblib.core.repapering.text.analytics.docmetadata.filename}")
 	private String docMetadataFilename;
+		
+	@Value("${gblib.core.repapering.file.storage}")
+	private String locationDocstorage;
 	
 	@RequestMapping(value = "/find/workflow/initiate/{contractId}", method = RequestMethod.GET)
 	public @ResponseBody WorkflowInitiate getWorkflowInitiateDetails(@PathVariable int contractId) {		
@@ -114,8 +127,11 @@ public class WorkflowInitiateController {
 		//Step 4: Also, update workflowReview with Pending Status.
 		//Step 5: Also update the contractDetails table with statusId with stage - Initiate.
 		Contract con = contractService.findByContractIdAndCurrStatusId(contractid, WorkflowStageEnums.OCR.ordinal()+1);
-		System.out.println("Contract found");
+		String docFileName = "";
+		
 		if(null != con) {
+			LOGGER.info("Contract with id= " + contractid + "is found");
+			docFileName = con.getDocumentFileName();
 			Date updatedOn = new Timestamp(System.currentTimeMillis());
 			WorkflowInitiate workflowInitiate = workflowInitiateService.findByContractIdAndStatusId(contractid,WorkflowStageCompletionResultEnums.Pending.ordinal() + 1);//pending=1
 			if(null != workflowInitiate) {
@@ -125,7 +141,7 @@ public class WorkflowInitiateController {
 				workflowInitiate.setUpdatedOn(updatedOn);
 				workflowInitiateService.saveWorkflowInitiate(workflowInitiate);
 
-				System.out.println("Workflow Initiate Saved.");
+				LOGGER.info("Workflow Initiate Saved.");
 			}
 			
 			
@@ -141,27 +157,32 @@ public class WorkflowInitiateController {
 			
 			workflowReviewService.saveWorkflowReview(workflowReview);
 			
-			System.out.println("Workflow Review Saved.");
-			//
-			//OCR is completed in this step. So fetch the analytics data based upon the OCR file name and update the Contract table.
-			//Before initiating the Analytics process - 
-			//Save the domaincontext data for this contract..
+			LOGGER.info("Workflow Review Saved.");
+			
+			
 			int contractType = 1; //default is loan
+			
 			//Try to call Python Script or Classification API here and get the contractType.Default it is 1.
+			// Python Lambda will be called post OCR process, once TEXT converted PDF is pushed in S3. It will
+			// classify the contract and finally update the Contract table.
 			List<DomainContractConfiguration> domainContractConfigDtls = addDomainContextForContract(contractType, contractid);
-			System.out.println("Domain context for the Contract Configuration is save for contract=." + contractid);
-			//Now read the PDF and Populate 
+			LOGGER.info("Domain context for the Contract Configuration is save for contract=." + contractid);
+ 
 			//Create the documentMetaData list as per the Active DomainContext
 			List<DocumentMetaData> activeDomainDtls =getContractDocMetaData(domainContractConfigDtls,contractType);
-			 
+			
+			//Now read the PDF and Populate
 			documentAnalyticsService.analyseDatafromContractDoc(activeDomainDtls,contractid);
 			
 			DocumentMetaDataExtended extendedMetadata = documentAnalyticsService.getExtendedMetaData();
-			
+			int location = 1;//default file
+			if(locationDocstorage.compareToIgnoreCase("awss3") == 0) {
+				location = 2;
+			}
 			//Create extended metadata and write here.
-			writetoJSONFile(contractid,extendedMetadata);
+			writetoJSONFile(contractid,docFileName,extendedMetadata,location);
 			//Print JSON data.
-			ObjectMapper mapper = new ObjectMapper();
+			/*ObjectMapper mapper = new ObjectMapper();
 			try {
 				mapper.writeValue(System.out, extendedMetadata);
 			} catch (JsonGenerationException e) {
@@ -173,19 +194,47 @@ public class WorkflowInitiateController {
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-			}
-						
-			String docFileName = con.getDocumentFileName();
+			}*/
+			
+			//The above process will write to metadataS3 bucket. Then Lambda will be called and either new update json
+			//file or Database will be loaded in response of the lambda trigger.
+			// Then after this process...update the docprocessinginfo table as below.
+			//This postAnalusis will be written to poll the DB if Lambda response is updated,
+			//If so, get the data from DB as updated from Python Lambda side.
+			//documentAnalyticsService.getExtendedMetaData_PostAnalysis();
+			
+			//documentAnalyticsService.updateDocProcessingInfo();
+			
+			
+			//String docFileName = con.getDocumentFileName();
 			System.out.println("docFilename=" + docFileName);
+			//
+			// Wait here until Lambda or Scheduler update the documentProcessingInfo table and 
+			// write the extendedmeta updated details into the edit bucket request.  
+			// Verify that if the contractId record is saved in the data base.
+			//
 			
-			List<DocumentProcessingInfo> lstDocuData = documentProcessingInfoService.findByDocFileName(docFileName);
-			 
-			System.out.println("Find doc File Name=" + lstDocuData.toString());
+			DocumentProcessingInfo docuData = documentProcessingInfoService.findByContractId(contractid);
 			
-			DocumentProcessingInfo docuData = null;
-			if(null != lstDocuData && lstDocuData.size() > 0) {
-				docuData = lstDocuData.get(0);
-			}
+			int second = 0;
+			while(true) {
+				if(null == docuData) {
+					LOGGER.info("ContractId= " + contractid + " analysis from Python is not completed yet. Please wait before proceedig further.");
+					try {
+						TimeUnit.SECONDS.sleep(5);
+						docuData = documentProcessingInfoService.findByContractId(contractid);
+						if(docuData != null) break;
+						
+						if(second > 6) break;
+						
+						second++;
+					} catch (InterruptedException e) {					
+						e.printStackTrace();
+					}
+					
+				}
+			}						 									
+			
 			con.setContractStartDate(docuData.getStartDate());
 			con.setContractExpiryDate(docuData.getTerminationDate());
 			con.setCounterPartyName(docuData.getCounterPartyName());
@@ -323,15 +372,30 @@ public class WorkflowInitiateController {
 	}
 	
 	//
-private void writetoJSONFile(int contractId,DocumentMetaDataExtended extendedMetadata) {
-		
+	private void writetoJSONFile(int contractId,String filename,DocumentMetaDataExtended extendedMetadata, int location) {
+
+		//If location = 1 // it is AWS bucket - gblib-metadata-bucket
+		//If location = 2 // It is Local disk - ./Analytics folder as mentioned in properties file.
 		String outFilePath ="";
-				
-		if(docMetadataFilename.isEmpty()) {
-			docMetadataFilename = "_DOCMETADATA.JSON";
-		}
+		String cloudDir = "",key="";
+		String msg = "";
 		
-		outFilePath = analyticsDir +File.separator + contractId + docMetadataFilename;
+		filename = filename.substring(0, filename.indexOf(".pdf"));
+		
+		if(1 == location) {		
+			if(docMetadataFilename.isEmpty()) {
+				docMetadataFilename = ".json";
+			}			
+			outFilePath = analyticsDir + File.separator + filename + docMetadataFilename;
+		}
+		else {
+			cloudDir = System.getProperty("java.io.tmpdir");
+			outFilePath = cloudDir + File.separator + filename + docMetadataFilename;
+			key = filename + docMetadataFilename;
+		}
+		msg = "Metadata will be written to location: " + outFilePath;
+		LOGGER.info(msg);
+		
 		ObjectMapper mapper = new ObjectMapper();
 		try {
 			mapper.writeValue(new File(outFilePath), extendedMetadata);
@@ -345,7 +409,16 @@ private void writetoJSONFile(int contractId,DocumentMetaDataExtended extendedMet
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	// Write to S3 from /temp (outFilePath) folder.
+		if(2 == location) {			
+			try {
+				amazonClient.uploadMetadataFileToS3bucket(key,outFilePath);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	//
 	}
 	//
-	
 }

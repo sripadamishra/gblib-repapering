@@ -9,4 +9,5 @@ public interface IDocumentProcessingInfoRepository<U> extends CrudRepository<Doc
 
 	List<DocumentProcessingInfo> findByCounterPartyName(String counterPartyName);
 	List<DocumentProcessingInfo> findByDocFileName(String docFileName);
+	DocumentProcessingInfo findByContractId(int contractId);
 }

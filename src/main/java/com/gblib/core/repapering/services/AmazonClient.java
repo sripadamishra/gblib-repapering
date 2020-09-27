@@ -37,7 +37,12 @@ public class AmazonClient {
 	@Value("${amazonProperties.scan.bucketName}")
 	private String bucketName;
 	@Value("${amazonProperties.ocr.bucketName}")
-	private String ocrBucketName;
+	private String ocrBucketName;	
+	@Value("${amazonProperties.metadata.bucketName}")
+	private String metadataBucketName;	
+	@Value("${amazonProperties.edit.bucketName}")
+	private String editBucketName;
+	
 	@Value("${amazonProperties.accessKey}")
 	private String accessKey;
 	@Value("${amazonProperties.secretKey}")
@@ -66,10 +71,10 @@ public class AmazonClient {
 	}
 
 	private void uploadFileTos3bucket(String fileName, File file) {
-		/*s3client.putObject(
-				new PutObjectRequest(bucketName, fileName, file).withCannedAcl(CannedAccessControlList.PublicRead));*/
+		
 		s3client.putObject(
 				new PutObjectRequest(bucketName, fileName, file));
+		LOGGER.info("File is uploaded sucessfully to bucket= " + bucketName + " with key= " + fileName);
 	}
 
 	public String uploadFile(MultipartFile multipartFile) throws Exception {
@@ -127,5 +132,93 @@ public class AmazonClient {
 		}
 	}
 	
+	public byte[] downloadOCRFileFromS3bucket(String keyName) throws Exception {
+		byte[] content = null;
+		try {
+        	LOGGER.info("Downloading an object from bucket=" + ocrBucketName + " with key= " + keyName);
+            final S3Object s3Object = s3client.getObject(ocrBucketName, keyName);
+            final S3ObjectInputStream stream = s3Object.getObjectContent();
+            content = IOUtils.toByteArray(stream);
+            LOGGER.info( keyName + "File downloaded successfully.");
+            s3Object.close();
+        } catch(final IOException ex) {
+        	LOGGER.error("IO Error Message= " + ex.getMessage());
+        	throw new Exception(ex);
+        }
+		return content;
+	}
+	
+	public byte[] downloadMetadataFileFromS3bucket(String keyName) throws Exception {
+		byte[] content = null;
+		try {
+        	LOGGER.info("Downloading an object from bucket=" + metadataBucketName + " with key= " + keyName);
+            final S3Object s3Object = s3client.getObject(metadataBucketName, keyName);
+            final S3ObjectInputStream stream = s3Object.getObjectContent();
+            content = IOUtils.toByteArray(stream);
+            LOGGER.info( keyName + "File downloaded successfully.");
+            s3Object.close();
+        } catch(final IOException ex) {
+        	LOGGER.error("IO Error Message= " + ex.getMessage());
+        	throw new Exception(ex);
+        }
+		return content;
+		
+	}
+	public void copyFromScanToOCRS3bucket(String sourceKey,String destKey) {		
+		s3client.copyObject(bucketName, sourceKey, ocrBucketName, destKey);
+		LOGGER.info("Source Scan bucket= " + bucketName + " with key= " + sourceKey);
+		LOGGER.info("Dest OCR bucket= " + ocrBucketName + " with key= " + destKey);
+	}
+	public void uploadMetadataFileToS3bucket(String key,String fileName) throws IOException {
+		
+		File metadataFile = new File(fileName);
+		s3client.putObject(metadataBucketName, key, metadataFile);
+		LOGGER.info("Metadata file is uploaded to bucket= " + metadataBucketName + " with key= " + key);
+	}
+	
+	public void uploadAnalysiedMetadataFileToS3bucket(String key,String fileName) throws IOException {
+		
+		File metadataFile = new File(fileName);
+		s3client.putObject(editBucketName, key, metadataFile);
+		LOGGER.info("Analysed Metadata file is uploaded to bucket= " + editBucketName + " with key= " + key);
+	}
+	
+	public byte[] downloadAnalysiedMetadataFileFromS3bucket(String keyName) throws Exception{
+		byte[] content = null;
+		try {
+        	LOGGER.info("Downloading an object from bucket=" + editBucketName + " with key= " + keyName);
+            final S3Object s3Object = s3client.getObject(editBucketName, keyName);
+            final S3ObjectInputStream stream = s3Object.getObjectContent();
+            content = IOUtils.toByteArray(stream);
+            LOGGER.info( keyName + "File downloaded successfully.");
+            s3Object.close();
+        } catch(final IOException ex) {
+        	LOGGER.error("IO Error Message= " + ex.getMessage());
+        	throw new Exception(ex);
+        }
+		return content;
+	}
+	
+	public byte[] downloadEditedFileFromS3bucket(String keyName) throws Exception {
+		byte[] content = null;
+		try {
+        	LOGGER.info("Downloading an object from bucket=" + editBucketName + " with key= " + keyName);
+            final S3Object s3Object = s3client.getObject(editBucketName, keyName);
+            final S3ObjectInputStream stream = s3Object.getObjectContent();
+            content = IOUtils.toByteArray(stream);
+            LOGGER.info( keyName + "Contract File downloaded successfully.");
+            s3Object.close();
+        } catch(final IOException ex) {
+        	LOGGER.error("IO Error Message= " + ex.getMessage());
+        	throw new Exception(ex);
+        }
+		return content;
+	}
+	
+	public void uploadEditFileToS3bucket(String key,String fileName) throws IOException {
+		
+		File editFile = new File(fileName);
+		s3client.putObject(editBucketName, key, editFile);	
+	}
 
 }

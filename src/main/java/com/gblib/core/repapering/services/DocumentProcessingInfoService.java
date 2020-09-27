@@ -30,9 +30,20 @@ public class DocumentProcessingInfoService {
 		return doc;
 	}
 	
+	public DocumentProcessingInfo findByContractId(int contractId) {
+		
+		DocumentProcessingInfo doc = documentProcessingInfoRepository.findByContractId(contractId);
+		return doc;
+	}
+	
 	public List<DocumentProcessingInfo> saveDocumentProcessingInfo(List<DocumentProcessingInfo> lstDocInfo){
 		
 		return (List<DocumentProcessingInfo>) documentProcessingInfoRepository.saveAll(lstDocInfo);
 		
+	}
+	
+	public DocumentProcessingInfo saveDocumentProcessingInfo(DocumentProcessingInfo docInfo){
+		
+		return (DocumentProcessingInfo) documentProcessingInfoRepository.save(docInfo);		
 	}
 }

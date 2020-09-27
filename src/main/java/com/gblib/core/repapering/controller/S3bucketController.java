@@ -58,7 +58,7 @@ public class S3bucketController {
 	
 	@Autowired
 	ContractService contractService;
-	@PostMapping("/v1/uploadFile")
+	@PostMapping("/uploadFile")
     public Contract uploadFile(@RequestParam("file") MultipartFile file,@RequestParam("userid") String userid) {
         String fileName = fileStorageService.storeFile(file);
 
@@ -108,11 +108,13 @@ public class S3bucketController {
     		Contract contract = new Contract();
     		//Step 3: Save into ContractDetails table
     		contract.setContractId(savedworkflowScanUpload.getContractId());
+    		//Append contractId as prefix, so Lambda trigger will get the Contratid and update to DB.
+    		fileName = savedworkflowScanUpload.getContractId() + "_" + fileName;
     		contract.setDocumentFileName(fileName);
     		contract.setCurrStatusId(WorkflowStageEnums.ScanUpload.ordinal()+1); // ScanUpload
     		contract.setCreatedBy(userid);
     		contract.setCreatedOn(createdOn);
-    		contract = contractService.saveContract(contract);		
+    		contract = contractService.saveContract(contract);
     		
     		return contract;
     	}

@@ -10,10 +10,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.StringTokenizer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.amazonaws.services.workdocs.model.DocumentMetadata;
+import com.fasterxml.jackson.core.JsonGenerationException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gblib.core.repapering.controller.WorkflowInitiateController;
 import com.gblib.core.repapering.model.Contract;
 import com.gblib.core.repapering.model.DocumentMetaData;
 import com.gblib.core.repapering.model.DocumentMetaDataExtended;
@@ -43,11 +50,18 @@ public class DocumentAnalyticsService {
 	@Value("${gblib.core.repapering.ocr.outputdir}")
 	private String outputFileDir;
 	
+	@Value("${gblib.core.repapering.file.storage}")	
+	private String storagelocation;
+	
+	private static final Logger LOGGER = LoggerFactory.getLogger(DocumentAnalyticsService.class);
 	
 	@Autowired ContractService contractService;
 	
 	@Autowired
 	DocumentProcessingInfoService documentProcessingInfoService; 
+	
+	@Autowired
+	AmazonClient amazonClient;
 	
 	//Important Collection variable required for document analysis/searching/update etc.
 	private List<DocumentMetaData> listwholeDocScanHeaders = null;
@@ -56,7 +70,7 @@ public class DocumentAnalyticsService {
 	PdfReader pdfReader = null;
 	private List<DocumentProcessingInfo> listdocProcessingInfo = null;
 	private String docFileName = null;
-	private DocumentMetaDataExtended docMetaDataExtended = null;
+	DocumentMetaDataExtended extendedMetadata = null;
 	private List<String> listpageLevelOnlyRawText = null;
 	//
 	private void getUnderlinedText(int pageno) {
@@ -71,7 +85,7 @@ public class DocumentAnalyticsService {
 		mapwholeDocScanHeaders = new HashMap<String,DocumentMetaData>();
 		listwholeDocScanHeaders = new ArrayList<DocumentMetaData>();
 			try {
-				System.out.println("Read whole doc to gather the Bold and Underlined Heading:Started");
+				LOGGER.info("Read whole doc to gather the Bold and Underlined Heading:Started");
 				UnderlinedBoldedLocationTextExtractionStrategy strategy = new UnderlinedBoldedLocationTextExtractionStrategy();				
 				for(int i=1;i<=pdfReader.getNumberOfPages();i++) {
 					PdfTextExtractor.getTextFromPage(pdfReader, i,strategy);					
@@ -85,9 +99,9 @@ public class DocumentAnalyticsService {
 						data.setHeaderParagraphIndex(index);
 						index++;				
 						//Below entry is added in Map.
-						System.out.println("Header =" + data.getHeaderName());
+						//System.out.println("Header =" + data.getHeaderName());
 						String key = stripTrailingChars(stripTrailingSpaces(data.getHeaderName()));						
-						System.out.println("key =" + key);
+						//System.out.println("key =" + key);
 						mapwholeDocScanHeaders.put(key, data);
 						listwholeDocScanHeaders.add(data);
 					}
@@ -97,7 +111,7 @@ public class DocumentAnalyticsService {
 			catch(Exception e) {
 				e.printStackTrace();
 			}
-		System.out.println("Read whole doc to gather the Bold and Underlined Heading:Completed");		
+			LOGGER.info("Read whole doc to gather the Bold and Underlined Heading:Completed");		
 	}
 	
 	private String stripTrailingSpaces(String input) {
@@ -120,7 +134,7 @@ public class DocumentAnalyticsService {
 	private String getPageHeaderText(int pageNo, String paraHeadingName) {
 		String text = "";
 		DocumentMetaData prev = null, next = null;
-		System.out.println("Get header element paragrapah content:Started");
+		LOGGER.info("Get header element paragrapah content:Started");
 		try {
 			for(DocumentMetaData headerdata:listwholeDocScanHeaders) {			
 				//Remove '.' / ':' characters from headerdata - HeaderName.
@@ -165,7 +179,7 @@ public class DocumentAnalyticsService {
 		catch(IOException e) {
 			e.printStackTrace();
 		}
-		System.out.println("Get header element paragrapah content:Completed");
+		LOGGER.info("Get header element paragrapah content:Completed");
 		return text;
 	}
 
@@ -265,7 +279,8 @@ public class DocumentAnalyticsService {
 					info.setFallbackText(fallbackText_unavailable);
 					info.setFallbackPage(eachContextInfo.getHeaderPageNo());
 					info.setFallbackPresent('Y');
-					info.setFallbackPosition(eachContextInfo.getHeaderParagraphIndex());					
+					info.setFallbackPosition(eachContextInfo.getHeaderParagraphIndex());
+					
 				}
 				break;
 			case "Fallback_Benchmark_Illegal":
@@ -437,13 +452,14 @@ public class DocumentAnalyticsService {
 		listdocProcessingInfo.add(info);
 		documentProcessingInfoService.saveDocumentProcessingInfo(listdocProcessingInfo);
 	}
+	
 	public void findMatchHeadersfromContractDoc(int contractId) {
 		
 		
 		getParagraphHeadingData();
 
 		if(null != listOnlyConfiguredContextHeaders && null != mapwholeDocScanHeaders) {
-			System.out.println("Find Matched Headers as per Configured Context:Started");
+			LOGGER.info("Find Matched Headers as per Configured Context:Started");
 			
 			for(DocumentMetaData activeContextData:listOnlyConfiguredContextHeaders) {
 
@@ -480,7 +496,7 @@ public class DocumentAnalyticsService {
 				}
 			}
 		}
-		System.out.println("Find Matched Headers as per Configured Context:Completed");
+		LOGGER.info("Find Matched Headers as per Configured Context:Completed");
 	}
 	
 	private void getPageLevelRawText() {
@@ -497,46 +513,109 @@ public class DocumentAnalyticsService {
 			listpageLevelOnlyRawText.add(text);
 		}
 	}
+	
 	public DocumentMetaDataExtended getExtendedMetaData() {
-		DocumentMetaDataExtended extendedMetadata = new DocumentMetaDataExtended();
+		extendedMetadata = new DocumentMetaDataExtended();
 		extendedMetadata.setListdocumentMetaData(listOnlyConfiguredContextHeaders);
 		extendedMetadata.setListpageLevelOnlyRawText(listpageLevelOnlyRawText);
 		return extendedMetadata;
 	}
+	
+	public DocumentMetaDataExtended getExtendedMetaData_PostAnalysis() {
+		
+		List<DocumentMetaData> metadata = extendedMetadata.getListdocumentMetaData();
+		for(DocumentMetaData record:metadata) {
+			if(record.getDomainContextDictionaryId().compareToIgnoreCase("Fallback_Benchmark_Unavailable") == 0) {
+				record.setDictionaryIdupdateRequired(true);
+				record.setTextSimilarity(60);
+				record.setDomaincontextProposedFieldValue(record.getDomainContextPossibleValueDefinitions());
+			}
+		}
+		//Write it to edit bucket required for doc edit:start
+		String key = docFileName,cloudDir="",outFilePath="";
+		boolean cloud = true;
+		
+		key = key.substring(0, key.indexOf(".pdf")) + ".json";
+		if(storagelocation.compareToIgnoreCase("awss3") == 0) {
+			cloud = true;			
+			cloudDir = System.getProperty("java.io.tmpdir");
+			outFilePath = cloudDir + File.separator + key;
+		}
+		else
+		{
+			outFilePath = ".\\edit" + File.separator + key;
+		}
+						
+		ObjectMapper mapper = new ObjectMapper();
+		try {
+			mapper.writeValue(new File(outFilePath), extendedMetadata);
+		} catch (JsonGenerationException e) {			
+			e.printStackTrace();
+		} catch (JsonMappingException e) {			
+			e.printStackTrace();
+		} catch (IOException e) {			
+			e.printStackTrace();
+		}
+		
+		if(cloud) {
+			try {
+				amazonClient.uploadAnalysiedMetadataFileToS3bucket(key, outFilePath);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}					
+					
+		//end
+		return extendedMetadata;
+	}
+	
+	public void updateDocProcessingInfo() {
+		this.updateDocumentProcessingInfo();
+	}
+	
 	public void analyseDatafromContractDoc(List<DocumentMetaData> activeDomainDtls,int contractId) {
 		listOnlyConfiguredContextHeaders = activeDomainDtls;
-		System.out.println("Data Analysis for each active Context:Started");
-		//TO DO: Read the document from S3 Bucket.
+		String key = "";
+		byte[] content = null;
+		LOGGER.info("Data Analysis for each active Context:Started");
+		boolean cloud = false;
+		if(storagelocation.compareToIgnoreCase("awss3") == 0){
+			cloud = true;
+		}
+		
+		//Read the document from S3 Bucket.
 		//
 		//Get the document name from the contractId
 		Contract con = contractService.findByContractId(contractId);
 		String txtConvertedFileName = con.getDocumentFileName();
 		docFileName = txtConvertedFileName;
-		System.out.println("Document Name=" + txtConvertedFileName);
+		LOGGER.info("Document Name=" + txtConvertedFileName);
 		String outputFilePath = outputFileDir + File.separator + txtConvertedFileName;
 		if(null != con) {
 			try {
-				pdfReader = new PdfReader(outputFilePath);
+				if(cloud)
+				{
+					content = amazonClient.downloadOCRFileFromS3bucket(docFileName);					
+					pdfReader = new PdfReader(content);
+				}
+				else {
+					pdfReader = new PdfReader(outputFilePath);
+				}
 				findMatchHeadersfromContractDoc(contractId);
 				//New logic to find out the underline text as earlier Bold Text finding is not working...
 				//
 				//Get page level raw text Data.
 				getPageLevelRawText();
 				pdfReader.close();
-				//Now Send to Python for analysis-
-				
-				//Wait for few minutes before reading the python output in the output directory.
-				
-				//Update the extracted value and text similarity values before return
-				updateDocumentProcessingInfo();
-				
+				//Now Send to Python for analysis												
 				
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
-		System.out.println("Data Analysis for each active Context:Completed");		
+		LOGGER.info("Data Analysis for each active Context:Completed");		
 	}
 	
 }

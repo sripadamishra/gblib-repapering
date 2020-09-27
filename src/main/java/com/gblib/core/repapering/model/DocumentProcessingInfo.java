@@ -34,6 +34,9 @@ public class DocumentProcessingInfo {
 	@Column(name = "startSnippet")
 	private String startSnippet;
 	
+	@Column(name = "contractId")
+	private int contractId;
+	
 	@Column(name = "docFileName")
 	private String docFileName;
 	
@@ -122,7 +125,15 @@ public class DocumentProcessingInfo {
 	public void setStartSnippet(String startSnippet) {
 		this.startSnippet = startSnippet;
 	}
-
+	
+	public int getContractId() {
+		return contractId;
+	}
+	
+	public void setContractId(int contractId) {
+		this.contractId = contractId;
+	}
+	
 	public String getDocFileName() {
 		return docFileName;
 	}

@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -11,8 +13,13 @@ import java.util.Set;
 
 
 import org.json.XML;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,6 +36,7 @@ import com.gblib.core.repapering.model.Contract;
 import com.gblib.core.repapering.model.DocumentMetaData;
 import com.gblib.core.repapering.model.DocumentUpdateRequest;
 import com.gblib.core.repapering.model.LiborDocument;
+import com.gblib.core.repapering.services.AmazonClient;
 import com.gblib.core.repapering.services.ContractService;
 import com.gblib.core.repapering.services.FileParsingService;
 import com.gblib.core.repapering.services.business.UnderlinedBoldedLocationTextExtractionStrategy;
@@ -72,6 +80,9 @@ public class PdfDocumentEditController {
 	@Autowired
 	FileParsingService parser;
 	
+	@Autowired
+	AmazonClient amazonClient;
+	
 	@Value("${gblib.core.repapering.text.analytics.metadatadir}")
 	private String analyticsDir;
 	
@@ -81,16 +92,21 @@ public class PdfDocumentEditController {
 	@Value("${gblib.core.repapering.text.analytics.domaincontextmetadata.filename}")
 	private String domainMetadataFilename;
 	
+	@Value("${gblib.core.repapering.file.storage}")
+	private String locationDocstorage;
+	
+	private static final Logger LOGGER = LoggerFactory.getLogger(PdfDocumentEditController.class);
+	
 	private DocumentUpdateRequest documentUpdateRequest = null; 
 	
 	@RequestMapping(value = "/generate/contract/docmetadata/{contractId}", method = RequestMethod.GET)
 	public @ResponseBody List<DocumentMetaData> readPdf(@PathVariable int contractId)	{		
 		List<DocumentMetaData> docMetadata = new ArrayList<DocumentMetaData>();		
 		try {
-			PdfReader pdfReader = new PdfReader("D:\\Projects\\libor-master\\Demo-document\\syndicate_CREDIT AGRICOLE_LIBOR_TEXT.pdf");
+			PdfReader pdfReader = new PdfReader("D:\\Projects\\AWS Deployment\\irswap_DEUTSCHE BANK_LIBOR_TEXT_edit.pdf");
 			UnderlinedBoldedLocationTextExtractionStrategy strategy = new UnderlinedBoldedLocationTextExtractionStrategy();
-			//for(int i=;i<=pdfReader.getNumberOfPages();i++) {
-			for(int i=30;i<=31;i++) {				
+			for(int i=1;i<=pdfReader.getNumberOfPages();i++) {
+			//for(int i=30;i<=31;i++) {				
 				PdfTextExtractor.getTextFromPage(pdfReader, i,strategy);
 				String chunkinfo = strategy.getResultantText();
 				
@@ -104,7 +120,7 @@ public class PdfDocumentEditController {
 				}
 				strategy.clean();//Reset all member variables after each page read.
 			}
-			System.out.println(getPageHeaderText(pdfReader,29,"No Withholdings",docMetadata));
+			System.out.println(getPageHeaderText(pdfReader,2,"Floating Amounts",docMetadata));
 			pdfReader.close();			
 		}
 		catch(Exception e) {
@@ -116,16 +132,23 @@ public class PdfDocumentEditController {
 		//
 		return docMetadata;
 	}
-	
+		
 	@RequestMapping(value = "/edit/contract", method = RequestMethod.POST)
 	public @ResponseBody String rewritePdf(@RequestBody String docmetadat) {
 		String text = "Doc is updated sucesfully.";
 		String docFileName = "",docFilePath = "";
 		String updatedDocFileName = "",updatedDocFilePath = "";
+		String sourceDocFileName = "",sourceDocFilePath = "";
+		String cloudDir = "",key ="";
+		boolean cloud = false;
 		// Convert the docmetadata into DocumentUpdateRequest		
+		if(locationDocstorage.compareToIgnoreCase("awss3") ==0) {
+			cloud = true;
+		}
 		
 		Contract con = null;
 		int contractId = 0;
+		byte[] content = null;
 		ObjectMapper mapper = new ObjectMapper();
 		try {
 			documentUpdateRequest = mapper.readValue(docmetadat, DocumentUpdateRequest.class);
@@ -133,10 +156,41 @@ public class PdfDocumentEditController {
 				con = contractService.findByContractId(documentUpdateRequest.getContractId());
 				if(con != null) {
 					docFileName = con.getDocumentFileName();
-					updatedDocFileName = docFileName.substring(0, docFileName.indexOf(".pdf")) + "_UPDATED" + ".pdf";
-					docFilePath = analyticsDir + File.separator + docFileName;
-					updatedDocFilePath = analyticsDir + File.separator + updatedDocFileName;
-					updateContract(docFilePath,updatedDocFilePath);
+					
+					//updatedDocFileName = docFileName.substring(0, docFileName.indexOf(".pdf")) + "_UPDATED" + ".pdf";
+					if(cloud) {
+						cloudDir = System.getProperty("java.io.tmpdir");
+						
+						updatedDocFilePath = cloudDir + File.separator + docFileName;
+						key = docFileName;
+						//download original file from OCR bucket.
+						try {
+							content = amazonClient.downloadOCRFileFromS3bucket(key);
+						} catch (Exception e) {							
+							e.printStackTrace();
+						}
+						if(content != null) {
+							updateContract(content,updatedDocFilePath);
+							LOGGER.info("Contract is updated sucessfully to Temp path: " + updatedDocFilePath);
+							//Upload to S3
+							try {
+								amazonClient.uploadEditFileToS3bucket(key,updatedDocFilePath);
+							} catch (IOException e) {						
+								e.printStackTrace();
+							}
+							LOGGER.info("Updated file: " + updatedDocFilePath + " to S3 edit bucket.");
+						}
+						else {
+							LOGGER.info("Could not read OCR file. could not update the contract. Please try later.");
+						}
+					}
+					else {
+						sourceDocFilePath = ".\\ocr" + File.separator + docFileName;
+						
+						//To DO - convert file content t obyte array
+						updatedDocFilePath = ".\\edit" + File.separator + docFileName;
+						//updateContract(docFilePath,updatedDocFilePath);
+					}					
 				}
 			}
 			
@@ -149,8 +203,7 @@ public class PdfDocumentEditController {
 		}
 		return text;
 	}
-	
-	
+		
 	@RequestMapping(value = "/modify/contract", method = RequestMethod.GET)
 	public @ResponseBody String editPdf(/*@RequestBody int contractid*/) {
 	
@@ -219,7 +272,29 @@ public class PdfDocumentEditController {
 		return newFileName;
 	}
 	
-	private void updateContract(String inputFile, String updatedFile){
+	@RequestMapping(value = "/file/{contractid}", method = RequestMethod.GET)
+	public ResponseEntity<byte[]> getFileContent(@PathVariable int contractid) throws Exception{
+		String updatedContract = "";
+		String filename = "";
+		byte[] bytes = null;
+		Contract con = contractService.findByContractId(contractid);
+		if(con != null) {
+			filename = con.getDocumentFileName();
+		}
+		HttpHeaders headers = new HttpHeaders();
+		headers.add("Content-type", "application/pdf");
+		//Download from S3 bucket-
+		bytes = amazonClient.downloadEditedFileFromS3bucket(filename);
+		//
+		//byte[] bytes = Files.readAllBytes(Paths.get(updatedContract)); // Use for non-cloud.
+		if(bytes != null) {
+			LOGGER.info("Updated file data will be displayed in browser.");
+		}
+		return new ResponseEntity<byte[]>(bytes,headers,HttpStatus.OK);
+	}
+	
+	
+	private void updateContract(byte[] content, String updatedFile){
 		
 		PdfReader pdfReader = null;
 		PdfStamper pdfStamper = null;
@@ -237,7 +312,7 @@ public class PdfDocumentEditController {
 
 		List<DocumentMetaData> metadata = null;
 		try {
-			pdfReader = new PdfReader(inputFile);
+			pdfReader = new PdfReader(content);
 			pdfStamper = new PdfStamper(pdfReader,new FileOutputStream(updatedFile));
 			fontBoldHeader = new Font(FontFamily.TIMES_ROMAN,10,Font.BOLD,BaseColor.BLACK);
 			fontNormalBody = new Font(FontFamily.TIMES_ROMAN,10,Font.NORMAL,BaseColor.BLUE);			

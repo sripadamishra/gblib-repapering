@@ -3,6 +3,11 @@ package com.gblib.core.repapering.services.business;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.gblib.core.repapering.controller.WorkflowInitiateController;
 import com.gblib.core.repapering.model.DocumentMetaData;
 import com.itextpdf.text.pdf.parser.LineSegment;
 import com.itextpdf.text.pdf.parser.LocationTextExtractionStrategy;
@@ -12,6 +17,7 @@ import com.itextpdf.text.pdf.parser.Matrix;
 
 public class UnderlinedBoldedLocationTextExtractionStrategy extends LocationTextExtractionStrategy{
 
+	private static final Logger LOGGER = LoggerFactory.getLogger(UnderlinedBoldedLocationTextExtractionStrategy.class);
 	
     protected List<TextChunkInfo> foundItems = new ArrayList<TextChunkInfo>();
     
@@ -65,9 +71,12 @@ public class UnderlinedBoldedLocationTextExtractionStrategy extends LocationText
     		allLocations.add(textChunkInfo);
     		
     		
-    		if (renderInfo.getFont().getPostscriptFontName().contains("Bold"))
+    		if (renderInfo.getFont().getPostscriptFontName().contains("Bold")) {
     			//Add this to our found collection
-    			foundItems.add(new TextChunkInfo(renderInfo));
+    			foundItems.add(new TextChunkInfo(renderInfo));    			
+    			//LOGGER.info("Bold Text:- " + renderInfo.getText());
+    			
+    		}
 
     		if (!lineHeights.contains(textChunkInfo.lineHeight))
     			lineHeights.add(textChunkInfo.lineHeight);
@@ -119,7 +128,7 @@ public class UnderlinedBoldedLocationTextExtractionStrategy extends LocationText
             }
 
             lastFound = info;
-        }
+        }        
         return sb.toString();
     }
     //
@@ -130,8 +139,7 @@ public class UnderlinedBoldedLocationTextExtractionStrategy extends LocationText
     	metadata.setStartLocationX(info.getStartLocation().get(Vector.I1));
     	metadata.setStartLocationY(info.getStartLocation().get(Vector.I2));
     	metadata.setEndLocationX(info.getEndLocation().get(Vector.I1));
-    	metadata.setEndLocationY(info.getEndLocation().get(Vector.I2));
-    	
+    	metadata.setEndLocationY(info.getEndLocation().get(Vector.I2));    	
     	return metadata;
     }
     //

@@ -22,6 +22,8 @@ public interface IContractRepository<U> extends CrudRepository<Contract,Long> {
 	
 	Contract findByContractIdAndCurrStatusId(int contractId,int currStatusId);
 	
+	List<Contract> findByCurrStatusId(int currStatusId);
+	
 	@Modifying
 	@Query("update Contract c set c.currStatusId = :currStatusId where c.id = :id")
 	Integer setNewCurrStatusIdForContract(@Param("currStatusId") int currStatusId, 

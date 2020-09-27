@@ -29,8 +29,8 @@ public class DomainContractConfigurationController {
 	DomainContractConfigurationService domainContractConfigurationService;
 	
 		
-	@RequestMapping(value = "/find/domainccontractfields/{contractid}", method = RequestMethod.GET)	
-	public @ResponseBody List<DomainContractConfiguration> findByContractIdAndRegulatoryEventId(@PathVariable int contractid) {
+	@RequestMapping(value = "/find/domainccontractfields", method = RequestMethod.GET)	
+	public @ResponseBody List<DomainContractConfiguration> findByContractIdAndRegulatoryEventId(@RequestBody int contractid) {
 		int eventid = 1;
 		return domainContractConfigurationService.findByContractIdAndRegulatoryEventId(contractid,eventid);
 	}

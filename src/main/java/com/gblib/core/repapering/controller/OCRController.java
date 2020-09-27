@@ -18,6 +18,7 @@ import com.gblib.core.repapering.global.WorkflowStageEnums;
 import com.gblib.core.repapering.model.Contract;
 import com.gblib.core.repapering.model.WorkflowInitiate;
 import com.gblib.core.repapering.model.WorkflowOCR;
+import com.gblib.core.repapering.services.AmazonClient;
 import com.gblib.core.repapering.services.ContractService;
 import com.gblib.core.repapering.services.OCRService;
 import com.gblib.core.repapering.services.WorkflowInitiateService;
@@ -38,6 +39,9 @@ import com.gblib.core.repapering.services.WorkflowOCRService;
 	@Autowired
 	WorkflowInitiateService workflowInitiateService;
 	
+	@Autowired
+	AmazonClient amazonClient;
+	
 	@RequestMapping(value = "v1/ocr/workflow", method = RequestMethod.POST)
 	public @ResponseBody Contract converttoPdf(@RequestBody int contractid) {
 		//Get input
@@ -46,7 +50,7 @@ import com.gblib.core.repapering.services.WorkflowOCRService;
 		if(null != con) {
 			String input =con.getDocumentFileName();
 			//Create output file name from the input appending with '_text'
-			String output = input.substring(0, input.indexOf(".pdf")) + "_TEXT" + ".pdf";
+			String output = input.substring(0, input.indexOf(".pdf")) + ".pdf";
 			int ret = 1;
 			//ret = ocrService.convert(input, output);
 			ret = 1; // overwrite it.
@@ -97,15 +101,20 @@ import com.gblib.core.repapering.services.WorkflowOCRService;
 	@RequestMapping(value = "/ocr/workflow", method = RequestMethod.POST)
 	public @ResponseBody Contract converttoPdfAndUploadToS3(@RequestBody int contractid) {
 		//Get input
-		Contract con = contractService.findByContractIdAndCurrStatusId(contractid, WorkflowStageEnums.ScanUpload.ordinal()+1);		
+		Contract con = contractService.findByContractIdAndCurrStatusId(contractid, WorkflowStageEnums.ScanUpload.ordinal()+1);
+		String key = "";
 		//
 		if(null != con) {
 			String inputFileName =con.getDocumentFileName();
-			//Create output file name from the input appending with '_text'
-			String outputFileName = inputFileName.substring(0, inputFileName.indexOf(".pdf")) + "_TEXT" + ".pdf";
+			
+			//String outputFileName = inputFileName.substring(0, inputFileName.indexOf(".pdf")) +  ".pdf";
+			String outputFileName = inputFileName;
 			int ret = 1;
-			ret = ocrService.downloadFromS3andConvert(inputFileName, outputFileName);
-			//ret = 1; // overwrite it.
+			//ret = ocrService.downloadFromS3andConvert(inputFileName, outputFileName);
+			ret = 1; // overwrite it.
+			//scan bucket does not have any contract prefixed so trim it.
+			inputFileName = inputFileName.substring(inputFileName.indexOf("_")+1, inputFileName.length());
+			amazonClient.copyFromScanToOCRS3bucket(inputFileName,outputFileName);
 			
 			//Save into ContractWorkflowOCR table
 			//Get the Pending record
@@ -145,6 +154,9 @@ import com.gblib.core.repapering.services.WorkflowOCRService;
 				con.setCurrStatusId(WorkflowStageEnums.OCR.ordinal()+1);
 				con.setDocumentFileName(outputFileName);
 				con = contractService.saveContract(con);
+				//
+				// Writing to metadata bucket can be done here as well. TO DO:-
+				//
 			}		
 		}
 		return con;
