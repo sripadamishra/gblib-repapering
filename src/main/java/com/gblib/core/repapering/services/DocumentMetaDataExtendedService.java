@@ -71,7 +71,7 @@ public class DocumentMetaDataExtendedService {
 			}
 			else {
 				
-				outFilePath = analyticsDir +File.separator + fileName;
+				outFilePath = ".\\edit" +File.separator + fileName;
 			}
 
 			

@@ -1,10 +1,15 @@
  package com.gblib.core.repapering.controller;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.sql.Timestamp;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,6 +32,10 @@ import com.gblib.core.repapering.services.WorkflowOCRService;
 @RestController
  public class OCRController {
 
+	
+	@Value("${gblib.core.repapering.file.storage}")
+	private String storageLocation;
+	
 	@Autowired
 	OCRService ocrService;
 	
@@ -106,7 +115,13 @@ import com.gblib.core.repapering.services.WorkflowOCRService;
 		//
 		if(null != con) {
 			String inputFileName =con.getDocumentFileName();
-			
+			// Add a 5 Sec delay for simulation.
+			try {
+				TimeUnit.SECONDS.sleep(5);
+			} catch (InterruptedException e1) {
+				// TODO Auto-generated catch block
+				System.out.println("Simulation delay does not work.");
+			}
 			//String outputFileName = inputFileName.substring(0, inputFileName.indexOf(".pdf")) +  ".pdf";
 			String outputFileName = inputFileName;
 			int ret = 1;
@@ -114,7 +129,24 @@ import com.gblib.core.repapering.services.WorkflowOCRService;
 			ret = 1; // overwrite it.
 			//scan bucket does not have any contract prefixed so trim it.
 			inputFileName = inputFileName.substring(inputFileName.indexOf("_")+1, inputFileName.length());
-			amazonClient.copyFromScanToOCRS3bucket(inputFileName,outputFileName);
+			
+			if(storageLocation.compareToIgnoreCase("awss3") == 0) {
+				amazonClient.copyFromScanToOCRS3bucket(inputFileName,outputFileName);
+			}
+			else {
+				String inFilePath = ".\\scan" + File.separator + inputFileName;
+				String outFilePath = ".\\ocr" + File.separator + outputFileName;
+	        	File source = new File(inFilePath);
+	        	File dest = new File(outFilePath);
+	        	//copy here.
+	        	try {	        		
+	        		Files.copy(source.toPath(), dest.toPath());				
+	        		System.out.println("Copying file is sucessful from path " + inFilePath + "to " + outFilePath);
+	        	} catch (IOException e) {
+	        		System.out.println("Copying file fails from path " + inFilePath + "to " + outFilePath);
+	        		e.printStackTrace();
+	        	}
+			}
 			
 			//Save into ContractWorkflowOCR table
 			//Get the Pending record

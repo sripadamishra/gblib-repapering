@@ -38,10 +38,13 @@ import com.gblib.core.repapering.services.DocumentProcessingInfoService;
 
 @Service
 @Configuration
-@EnableScheduling
+//@EnableScheduling
 public class DataClassifyExtractionScheduler {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(DataClassifyExtractionScheduler.class);
+	
+	@Value("${gblib.core.repapering.file.storage}")
+	private String storageLocation;
 	
 	@Autowired
 	ContractService contractService;
@@ -71,13 +74,80 @@ public class DataClassifyExtractionScheduler {
 	private Contract current_Contract = null;
 	boolean libor = false;
 	
-	@Scheduled(cron = "0 */1 * * * ?")
+	//@Scheduled(cron = "0 */1 * * * ?")
 	public void extractDataFromContract() {
-		LOGGER.info("Data classifies and extractor scheduler is running every 5 sec.");
+		LOGGER.info("Classifier and extractor scheduler is running every 30 seconds.");
 		getOCRContracts();
-		downloadOCRContractsFromS3();				
+		downloadOCRContracts();				
 	}
 	
+	private void getOCRContracts() {		
+		OCRContracts = contractService.findByCurrStatusId(WorkflowStageEnums.OCR.ordinal()+1);
+		
+		LOGGER.info("Received list of OCR contracts; Count= "+ OCRContracts.size());
+	}
+	
+	private void downloadOCRContracts() {
+		String fileName = "",outFileName = "",txtFileName = "";
+		byte[] content = null;
+		
+		for(Contract eachCon:OCRContracts) {
+			fileName = eachCon.getDocumentFileName();
+			current_fileName = fileName;
+			String fileNameTmp = fileName.replaceFirst(".pdf",".json");
+			boolean cloud = false;
+			try {				
+				if(storageLocation.compareToIgnoreCase("awss3") == 0) {
+					content = amazonClient.downloadMetadataFileFromS3bucket(fileNameTmp);
+					cloud = true;
+				}
+				else {
+					String fileNameTmpPath = ".\\metadata" + File.separator + fileNameTmp;
+					content = Files.readAllBytes(Paths.get(fileNameTmpPath));
+				}
+				
+				if(content != null) {
+					if(cloud) {
+						LOGGER.info("Download metadata is sucessful. for key=" + fileNameTmp);
+					}
+					else {
+						LOGGER.info("Read metadata from local is sucessful for " + fileNameTmp);
+					}
+					outFileName = writeToTempFile(content,fileNameTmp);
+					txtFileName = convertTxtFromJsonMetadata(outFileName);
+					docInfo.setContractId(eachCon.getContractId());
+					current_predictions = callPythonClassifyScript_Simulated(txtFileName);
+
+					docInfo.setPredictions(current_predictions);
+
+					current_extractedData = callPythonExtractScript_Simulated(txtFileName);
+
+					saveDocumentProcessingInfo();
+
+					current_similarityData = callPythonSimilarityScript_Simulated(outFileName);
+
+					uploadToS3EditBucket();
+
+					//Reset all
+					current_ContractId = 0;
+					current_fileName = "";
+					current_predictions = "";
+					current_extractedData = "";
+					current_similarityData = "";
+					docInfo = null;
+				}
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				//e.printStackTrace();
+				if(content == null) {
+					LOGGER.error("Download OCR contract is unsuccessful. for key=" + fileNameTmp);
+					LOGGER.info("Next contract is searched for download.");
+				}
+			}
+
+		}
+	}
+
 	private String convertTxtFromJsonMetadata(String jsonfile) {		
 		ObjectMapper mapper = new ObjectMapper();
 		
@@ -111,65 +181,7 @@ public class DataClassifyExtractionScheduler {
 		
 			
 	}
-	
-	private void getOCRContracts() {		
-		OCRContracts = contractService.findByCurrStatusId(WorkflowStageEnums.OCR.ordinal()+1);
-		
-		LOGGER.info("Received list of OCR contracts; Count= "+ OCRContracts.size());
-	}
-	
-	private void downloadOCRContractsFromS3() {
-		String fileName = "",outFileName = "",txtFileName = "";
-		byte[] content = null;
-		
-		for(Contract eachCon:OCRContracts) {
-			fileName = eachCon.getDocumentFileName();
-			current_fileName = fileName;
-			String fileNameTmp =fileName.replaceFirst(".pdf",".json");
-			try {
 				
-				content = amazonClient.downloadMetadataFileFromS3bucket(fileNameTmp);
-				if(content != null) {
-				LOGGER.info("Download OCR contract is sucessful. for key=" + fileNameTmp);
-				outFileName = writeToTempFile(content,fileNameTmp);
-				txtFileName = convertTxtFromJsonMetadata(outFileName);
-				docInfo.setContractId(eachCon.getContractId());
-				current_predictions = callPythonClassifyScript_Simulated(txtFileName);
-				
-				setContractType();
-				
-				current_extractedData = callPythonExtractScript_Simulated(txtFileName);
-									
-				saveDocumentProcessingInfo();
-				
-				current_similarityData = callPythonSimilarityScript_Simulated(outFileName);
-				
-				uploadToS3EditBucket();
-				
-				//Reset all
-				current_ContractId = 0;
-				current_fileName = "";
-				current_predictions = "";
-				current_extractedData = "";
-				current_similarityData = "";
-				
-				}
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				//e.printStackTrace();
-				if(content == null) {
-					LOGGER.error("Download OCR contract is unsuccessful. for key=" + fileNameTmp);
-					LOGGER.info("Next contract is searched for download.");
-				}
-			}
-			
-		}
-	}
-	
-	private void setContractType() {
-		docInfo.setPredictions(current_predictions);
-	}
-	
 	private String writeToTempFile(byte[] content,String fileName) {
 		BufferedWriter writer = null;
 		String cloudDir = System.getProperty("java.io.tmpdir");
@@ -268,7 +280,8 @@ public class DataClassifyExtractionScheduler {
 			
 			if(dictionayId.compareToIgnoreCase("Fallback_Benchmark_Unavailable") == 0)			   
 			{
-				doc.setDictionaryIdupdateRequired(true);
+				doc.setDictionaryIdupdateRequired(true);				
+				doc.setTextSimilarity(80);
 			}			
 									
 		}
@@ -307,7 +320,7 @@ public class DataClassifyExtractionScheduler {
 	private void uploadToS3EditBucket() {		
 		//Write the update metadata into he edit bucket.
 		String cloudDir = "",outFilePath = "", key = "", msg = "";
-		boolean cloud = true;
+		boolean cloud = false;
 		String filename = current_fileName;
 		filename = filename.substring(0, filename.indexOf(".pdf"));
 		if(locationDocstorage.compareToIgnoreCase("awss3") == 0) {

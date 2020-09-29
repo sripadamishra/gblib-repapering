@@ -4,12 +4,16 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.sql.Timestamp;
 import java.util.Date;
 
 import javax.servlet.http.HttpServletRequest;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -41,6 +45,9 @@ import com.gblib.core.repapering.services.WorkflowScanUploadService;
 public class S3bucketController {
 //https://medium.com/oril/uploading-files-to-aws-s3-bucket-using-spring-boot-483fcb6f8646
 	private AmazonClient amazonClient;
+		
+	@Value("${gblib.core.repapering.file.storage}")
+	private String storageLocation;
 	
 	@Autowired
 	S3bucketController(AmazonClient amazonClient) {
@@ -61,22 +68,38 @@ public class S3bucketController {
 	@PostMapping("/uploadFile")
     public Contract uploadFile(@RequestParam("file") MultipartFile file,@RequestParam("userid") String userid) {
         String fileName = fileStorageService.storeFile(file);
-
+        String outFilePath = "";
         String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath()
             .path("/downloadFile/")
             .path(fileName)
             .toUriString();
-                
-            //Upload file to S# bucket
+                    
+        if(storageLocation.compareToIgnoreCase("awss3") == 0) {
+        	//Upload file to S# bucket
         	try {
-				this.amazonClient.uploadFile(file);
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				System.out.println("Unable to upload file in S3 bucket");
-				e.printStackTrace();
-			}
-        	
-        	
+        		this.amazonClient.uploadFile(file);
+        	} catch (Exception e) {
+        		// TODO Auto-generated catch block
+        		System.out.println("Unable to upload file in S3 bucket");
+        		e.printStackTrace();
+        	}
+        }
+        else        	
+        {
+        	outFilePath = ".\\scan" + File.separator + fileName;
+        	File source = null;
+        	File dest = new File(outFilePath);
+        	//copy here.
+        	try {
+        		source = convertMultiPartToFile(file);
+        		Files.copy(source.toPath(), dest.toPath(),StandardCopyOption.REPLACE_EXISTING);        		
+        		System.out.println("Copying file is sucessful to dir " + outFilePath);
+        	} catch (IOException e) {
+        		System.out.println("Copying file fails to dir " + outFilePath);
+        		e.printStackTrace();
+        	}
+        }
+
     		//Step:1 Save into ContractWorkflowScanUpload table with CompletionResult =2
     		  
     		Date createdOn = new Timestamp(System.currentTimeMillis());
@@ -142,5 +165,12 @@ public class S3bucketController {
                 .body(resource);
     }
     
+    private File convertMultiPartToFile(MultipartFile file) throws IOException {
+		File convFile = new File(file.getOriginalFilename());
+		FileOutputStream fos = new FileOutputStream(convFile);
+		fos.write(file.getBytes());
+		fos.close();
+		return convFile;
+	}
     
 }

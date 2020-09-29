@@ -591,7 +591,7 @@ public class DocumentAnalyticsService {
 		String txtConvertedFileName = con.getDocumentFileName();
 		docFileName = txtConvertedFileName;
 		LOGGER.info("Document Name=" + txtConvertedFileName);
-		String outputFilePath = outputFileDir + File.separator + txtConvertedFileName;
+		String outputFilePath = ".\\ocr" + File.separator + txtConvertedFileName;
 		if(null != con) {
 			try {
 				if(cloud)

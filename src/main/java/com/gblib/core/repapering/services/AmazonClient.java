@@ -139,7 +139,7 @@ public class AmazonClient {
             final S3Object s3Object = s3client.getObject(ocrBucketName, keyName);
             final S3ObjectInputStream stream = s3Object.getObjectContent();
             content = IOUtils.toByteArray(stream);
-            LOGGER.info( keyName + "File downloaded successfully.");
+            LOGGER.info( keyName + " File downloaded successfully from bucket= " + ocrBucketName);
             s3Object.close();
         } catch(final IOException ex) {
         	LOGGER.error("IO Error Message= " + ex.getMessage());
@@ -155,7 +155,7 @@ public class AmazonClient {
             final S3Object s3Object = s3client.getObject(metadataBucketName, keyName);
             final S3ObjectInputStream stream = s3Object.getObjectContent();
             content = IOUtils.toByteArray(stream);
-            LOGGER.info( keyName + "File downloaded successfully.");
+            LOGGER.info( keyName + "File downloaded successfully from bucket= " + metadataBucketName);
             s3Object.close();
         } catch(final IOException ex) {
         	LOGGER.error("IO Error Message= " + ex.getMessage());
@@ -190,7 +190,7 @@ public class AmazonClient {
             final S3Object s3Object = s3client.getObject(editBucketName, keyName);
             final S3ObjectInputStream stream = s3Object.getObjectContent();
             content = IOUtils.toByteArray(stream);
-            LOGGER.info( keyName + "File downloaded successfully.");
+            LOGGER.info( keyName + "File downloaded successfully from bucketname= " + editBucketName);
             s3Object.close();
         } catch(final IOException ex) {
         	LOGGER.error("IO Error Message= " + ex.getMessage());
@@ -202,11 +202,11 @@ public class AmazonClient {
 	public byte[] downloadEditedFileFromS3bucket(String keyName) throws Exception {
 		byte[] content = null;
 		try {
-        	LOGGER.info("Downloading an object from bucket=" + editBucketName + " with key= " + keyName);
+        	LOGGER.info("Contract File download is started from bucket=" + editBucketName + " with key= " + keyName);
             final S3Object s3Object = s3client.getObject(editBucketName, keyName);
             final S3ObjectInputStream stream = s3Object.getObjectContent();
             content = IOUtils.toByteArray(stream);
-            LOGGER.info( keyName + "Contract File downloaded successfully.");
+            LOGGER.info( keyName + "Contract File download is completed successfully from bucketname= " + editBucketName);
             s3Object.close();
         } catch(final IOException ex) {
         	LOGGER.error("IO Error Message= " + ex.getMessage());
@@ -215,10 +215,11 @@ public class AmazonClient {
 		return content;
 	}
 	
-	public void uploadEditFileToS3bucket(String key,String fileName) throws IOException {
-		
+	public void uploadEditFileToS3bucket(String key,String fileName) throws IOException {		
 		File editFile = new File(fileName);
-		s3client.putObject(editBucketName, key, editFile);	
+		LOGGER.info("Upload File " + fileName + "to bucket " + editBucketName +" is started.");
+		s3client.putObject(editBucketName, key, editFile);
+		LOGGER.info("Upload File " + fileName + "to bucket " + editBucketName +" is completed.");
 	}
 
 }

@@ -6,6 +6,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -134,8 +135,10 @@ public class PdfDocumentEditController {
 	}
 		
 	@RequestMapping(value = "/edit/contract", method = RequestMethod.POST)
-	public @ResponseBody String rewritePdf(@RequestBody String docmetadat) {
+	public @ResponseBody List<String> rewritePdf(@RequestBody String docmetadat) {
 		String text = "Doc is updated sucesfully.";
+		List<String> retValues = new ArrayList<String>();
+		
 		String docFileName = "",docFilePath = "";
 		String updatedDocFileName = "",updatedDocFilePath = "";
 		String sourceDocFileName = "",sourceDocFilePath = "";
@@ -144,8 +147,7 @@ public class PdfDocumentEditController {
 		// Convert the docmetadata into DocumentUpdateRequest		
 		if(locationDocstorage.compareToIgnoreCase("awss3") ==0) {
 			cloud = true;
-		}
-		
+		}		
 		Contract con = null;
 		int contractId = 0;
 		byte[] content = null;
@@ -155,42 +157,31 @@ public class PdfDocumentEditController {
 			if(documentUpdateRequest != null) {
 				con = contractService.findByContractId(documentUpdateRequest.getContractId());
 				if(con != null) {
-					docFileName = con.getDocumentFileName();
-					
-					//updatedDocFileName = docFileName.substring(0, docFileName.indexOf(".pdf")) + "_UPDATED" + ".pdf";
+					docFileName = con.getDocumentFileName();					
 					if(cloud) {
-						cloudDir = System.getProperty("java.io.tmpdir");
-						
+						cloudDir = System.getProperty("java.io.tmpdir");						
 						updatedDocFilePath = cloudDir + File.separator + docFileName;
 						key = docFileName;
-						//download original file from OCR bucket.
-						try {
-							content = amazonClient.downloadOCRFileFromS3bucket(key);
-						} catch (Exception e) {							
-							e.printStackTrace();
-						}
+						content = amazonClient.downloadOCRFileFromS3bucket(key);						
 						if(content != null) {
+							LOGGER.info("Contract update started...");
 							updateContract(content,updatedDocFilePath);
-							LOGGER.info("Contract is updated sucessfully to Temp path: " + updatedDocFilePath);
+							LOGGER.info("Contract update completed sucessfully to Temp path: " + updatedDocFilePath);
 							//Upload to S3
-							try {
-								amazonClient.uploadEditFileToS3bucket(key,updatedDocFilePath);
-							} catch (IOException e) {						
-								e.printStackTrace();
-							}
-							LOGGER.info("Updated file: " + updatedDocFilePath + " to S3 edit bucket.");
-						}
-						else {
-							LOGGER.info("Could not read OCR file. could not update the contract. Please try later.");
-						}
+							amazonClient.uploadEditFileToS3bucket(key,updatedDocFilePath);
+							LOGGER.info("Updated file: " + updatedDocFilePath + " to S3 edit bucket.");														
+						}						
 					}
 					else {
-						sourceDocFilePath = ".\\ocr" + File.separator + docFileName;
-						
-						//To DO - convert file content t obyte array
+						String fileNameTmpPath = ".\\ocr" + File.separator + docFileName;
 						updatedDocFilePath = ".\\edit" + File.separator + docFileName;
-						//updateContract(docFilePath,updatedDocFilePath);
-					}					
+						content = Files.readAllBytes(Paths.get(fileNameTmpPath));
+						if(content != null) {
+							updateContract(content,updatedDocFilePath);							
+							LOGGER.info("Contract is updated locally from: " + fileNameTmpPath + "to " + updatedDocFilePath);
+						}
+					}
+						
 				}
 			}
 			
@@ -200,8 +191,12 @@ public class PdfDocumentEditController {
 		} catch (JsonProcessingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
-		return text;
+		retValues.add(text);
+		return retValues;
 	}
 		
 	@RequestMapping(value = "/modify/contract", method = RequestMethod.GET)
@@ -284,9 +279,13 @@ public class PdfDocumentEditController {
 		HttpHeaders headers = new HttpHeaders();
 		headers.add("Content-type", "application/pdf");
 		//Download from S3 bucket-
-		bytes = amazonClient.downloadEditedFileFromS3bucket(filename);
-		//
-		//byte[] bytes = Files.readAllBytes(Paths.get(updatedContract)); // Use for non-cloud.
+		if(locationDocstorage.compareToIgnoreCase("awss3") == 0) {
+			bytes = amazonClient.downloadEditedFileFromS3bucket(filename);
+		}
+		else {
+			String editPath = ".\\edit" + File.separator + filename;
+			bytes = Files.readAllBytes(Paths.get(editPath));
+		}				
 		if(bytes != null) {
 			LOGGER.info("Updated file data will be displayed in browser.");
 		}
